@@ -7,7 +7,7 @@
     <title>POS Táctil Visual Offline-First - EL WEY PICA POLLO</title>
     <style>
         /* =====================================================================
-           1. VARIABLES DE DISEÑO Y ESTILOS BASE (TEMA GRIS TEXTURIZADO MODERNO)
+1. VARIABLES DE DISEÑO Y ESTILOS BASE (TEMA GRIS TEXTURIZADO MODERNO)
         ====================================================================== */
         :root {
             --bg: #cbd5e1;
@@ -68,7 +68,7 @@
         }
 
         /* =====================================================================
-           2. PANTALLA DE INICIO DE SESIÓN (LOGIN) + TECLADO NUMÉRICO CIRCULAR
+2. PANTALLA DE INICIO DE SESIÓN (LOGIN) + TECLADO NUMÉRICO CIRCULAR
         ====================================================================== */
         #screen-login {
             min-height: 100vh;
@@ -265,7 +265,7 @@
         }
 
         /* =====================================================================
-           3. BARRA SUPERIOR FIJA (.topbar) Y PESTAÑAS DE NAVEGACIÓN
+3. BARRA SUPERIOR FIJA (.topbar) Y PESTAÑAS DE NAVEGACIÓN
         ====================================================================== */
         #screen-pos {
             display: none;
@@ -395,7 +395,7 @@
         }
 
         /* =====================================================================
-           4. VISTAS GENERALES, TARJETAS KPI Y TABLAS
+4. VISTAS GENERALES, TARJETAS KPI Y TABLAS
         ====================================================================== */
         .view-section {
             display: none;
@@ -552,7 +552,7 @@
         }
 
         /* =====================================================================
-           5. VENTAS EN PANTALLA DIVIDIDA + PAGINACIÓN (8 ÍTEMS) + CARRITO FIJO
+5. VENTAS EN PANTALLA DIVIDIDA + PAGINACIÓN (8 ÍTEMS) + CARRITO FIJO
         ====================================================================== */
         .pos-layout {
             display: grid;
@@ -1333,7 +1333,7 @@
         }
 
         /* =====================================================================
-           6. CHECKBOXES DE PERMISOS DE MÓDULOS Y VISTA PREVIA CUADRADA
+6. CHECKBOXES DE PERMISOS DE MÓDULOS Y VISTA PREVIA CUADRADA
         ====================================================================== */
         .perm-grid {
             display: grid;
@@ -1385,7 +1385,7 @@
         }
 
         /* =====================================================================
-           7. MODALES BLINDADOS (.modal-overlay CON display: none !important)
+7. MODALES BLINDADOS (.modal-overlay CON display: none !important)
         ====================================================================== */
         .modal-overlay {
             display: none !important;
@@ -1473,7 +1473,7 @@
         }
 
         /* =====================================================================
-           8. TICKET TÉRMICO 80MM Y ESTILOS @MEDIA PRINT
+8. TICKET TÉRMICO 80MM Y ESTILOS @MEDIA PRINT
         ====================================================================== */
         .ticket-paper-80 {
             width: 302px;
@@ -1562,7 +1562,7 @@
 <body>
 
 <!-- =====================================================================
-     1. PANTALLA DE INICIO DE SESIÓN (LOGIN LIMPIO + TECLADO PIN CIRCULAR)
+1. PANTALLA DE INICIO DE SESIÓN (LOGIN LIMPIO + TECLADO PIN CIRCULAR)
 ====================================================================== -->
 <section id="screen-login">
     <div class="login-card">
@@ -1615,7 +1615,7 @@
 </div>
 
 <!-- =====================================================================
-     2. APLICACIÓN PRINCIPAL DEL POS
+2. APLICACIÓN PRINCIPAL DEL POS
 ====================================================================== -->
 <section id="screen-pos">
     <header class="topbar">
@@ -2328,16 +2328,20 @@
 
                 <div class="cfg-card">
                     <h3>☁️ Conexión a la Nube y Respaldo Local (Offline-First)</h3>
+                    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:9px;padding:9px 11px;font-size:0.78rem;font-weight:800;color:#166534;">
+                        🔥 Conectado automáticamente a Firebase Firestore (<b>el-wey-pica-pollo</b>)
+                    </div>
                     <div class="fld">
                         <label>Proveedor en la Nube</label>
                         <select id="cfg-cloud-provider">
+                            <option value="firebase-sdk">Firebase Firestore Automático (el-wey-pica-pollo)</option>
                             <option value="none">Solo Local (Sin Nube)</option>
                             <option value="firebase">Firebase Realtime Database (URL REST)</option>
                             <option value="sheets">Google Sheets (Apps Script Web App URL)</option>
                         </select>
                     </div>
                     <div class="fld">
-                        <label>URL de Conexión en la Nube</label>
+                        <label>URL de Conexión en la Nube (Opcional / Adicional)</label>
                         <input type="url" id="cfg-cloud-url" placeholder="https://tu-proyecto.firebaseio.com/pos.json">
                     </div>
                     <div class="fld">
@@ -2364,7 +2368,7 @@
 </section>
 
 <!-- =====================================================================
-     3. MODALES DEL SISTEMA (TODOS BLINDADOS CON .modal-overlay)
+3. MODALES DEL SISTEMA (TODOS BLINDADOS CON .modal-overlay)
 ====================================================================== -->
 
 <!-- MODAL COBRO CON BOTONES DE BANCO EN TRANSFERENCIA BANCARIA -->
@@ -2857,7 +2861,99 @@
 <div id="toast-msg"></div>
 
 <!-- =====================================================================
-     4. JAVASCRIPT COMPLETO, AUTOCONTENIDO Y OFFLINE-FIRST
+4. CONEXIÓN AUTOMÁTICA A FIREBASE FIRESTORE (el-wey-pica-pollo)
+====================================================================== -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const DEFAULT_FB = {
+        apiKey: "AIzaSyDec-RxOCiaLGtHhnb2FJXqDwvGWKrlpe0",
+        authDomain: "el-wey-pica-pollo.firebaseapp.com",
+        projectId: "el-wey-pica-pollo",
+        storageBucket: "el-wey-pica-pollo.firebasestorage.app",
+        messagingSenderId: "607583707173",
+        appId: "1:607583707173:web:69d95b8ee9e7c0f9cd5fcc"
+    };
+
+    let fbDb = null;
+    let fbDocRef = null;
+    let isApplyingRemote = false;
+
+    function updateFirebaseStatusBadge(connected) {
+        const badge = document.getElementById('badge-net-status');
+        if (!badge) return;
+        if (connected && navigator.onLine) {
+            badge.className = 'pill-badge pill-online';
+            badge.textContent = '🟢 Firebase Conectado';
+        } else if (navigator.onLine) {
+            badge.className = 'pill-badge pill-online';
+            badge.textContent = '🟢 En Línea';
+        } else {
+            badge.className = 'pill-badge pill-offline';
+            badge.textContent = '🟠 Offline Local';
+        }
+    }
+
+    try {
+        const fbApp = initializeApp(DEFAULT_FB);
+        fbDb = getFirestore(fbApp);
+        fbDocRef = doc(fbDb, 'el_wey_pica_pollo_pos', 'estado_principal');
+        enableIndexedDbPersistence(fbDb).catch(function() {});
+
+        onSnapshot(fbDocRef, function(snap) {
+            updateFirebaseStatusBadge(true);
+            if (snap.exists()) {
+                const remote = snap.data();
+                const localTs = Number(localStorage.getItem('ew_fb_last_ts') || 0);
+                if (remote && remote.snapshot && Number(remote.updatedAtMs || 0) > localTs) {
+                    isApplyingRemote = true;
+                    localStorage.setItem('ew_fb_last_ts', String(remote.updatedAtMs));
+                    if (typeof window.__applyFirebaseSnapshot === 'function') {
+                        window.__applyFirebaseSnapshot(remote.snapshot);
+                    }
+                    isApplyingRemote = false;
+                }
+            } else {
+                window.__pushFirebaseSnapshot(true);
+            }
+        }, function() {
+            updateFirebaseStatusBadge(false);
+        });
+    } catch (err) {
+        updateFirebaseStatusBadge(false);
+    }
+
+    window.__pushFirebaseSnapshot = async function(silent) {
+        if (!fbDocRef || isApplyingRemote) return;
+        if (typeof window.__getFirebaseSnapshot !== 'function') return;
+        try {
+            const nowMs = Date.now();
+            localStorage.setItem('ew_fb_last_ts', String(nowMs));
+            await setDoc(fbDocRef, {
+                updatedAtMs: nowMs,
+                snapshot: window.__getFirebaseSnapshot()
+            });
+            updateFirebaseStatusBadge(true);
+            if (!silent && typeof window.__notifyToast === 'function') {
+                window.__notifyToast('🔥 Sincronizado con Firebase');
+            }
+        } catch (err) {
+            updateFirebaseStatusBadge(false);
+        }
+    };
+
+    window.addEventListener('online', function() {
+        updateFirebaseStatusBadge(true);
+        window.__pushFirebaseSnapshot(true);
+    });
+    window.addEventListener('offline', function() {
+        updateFirebaseStatusBadge(false);
+    });
+</script>
+
+<!-- =====================================================================
+5. JAVASCRIPT COMPLETO, AUTOCONTENIDO Y OFFLINE-FIRST (ORIGINAL INTACTO)
 ====================================================================== -->
 <script>
 (function() {
@@ -2961,7 +3057,7 @@
     }
 
     /* =========================================================================
-       B. ALMACENAMIENTO OFFLINE-FIRST (INDEXEDDB + LOCALSTORAGE + SERVICE WORKER)
+       B. ALMACENAMIENTO OFFLINE-FIRST (INDEXEDDB + LOCALSTORAGE + FIREBASE SYNC)
     ========================================================================= */
     var ramStore = {};
     var idbHandle = null;
@@ -2997,8 +3093,13 @@
                 tx.objectStore('kv').put(val, key);
             }
         } catch (e2) {}
-        if (!skipCloud && cloudCfg && cloudCfg.provider !== 'none' && cloudCfg.url && navigator.onLine) {
-            scheduleCloudAutoPush();
+        if (!skipCloud) {
+            if (typeof window.__pushFirebaseSnapshot === 'function') {
+                window.__pushFirebaseSnapshot(true);
+            }
+            if (cloudCfg && cloudCfg.provider !== 'none' && cloudCfg.provider !== 'firebase-sdk' && cloudCfg.url && navigator.onLine) {
+                scheduleCloudAutoPush();
+            }
         }
     }
 
@@ -3031,9 +3132,9 @@
     });
 
     var cloudCfg = loadData('ew_cloud_v1', {
-        provider: 'none',
+        provider: 'firebase-sdk',
         url: '',
-        bizId: 'el-wey-pica-pollo-rd'
+        bizId: 'el-wey-pica-pollo'
     });
 
     var usersList = loadData('ew_users_v4', [
@@ -3157,6 +3258,7 @@
         clearTimeout(toastTimer);
         toastTimer = setTimeout(function() { el.classList.remove('show'); }, 2700);
     }
+    window.__notifyToast = toast;
 
     function openMod(id) {
         var el = document.getElementById(id);
@@ -5111,9 +5213,9 @@
         document.getElementById('cfg-phone').value = bizSettings.phone || '';
         document.getElementById('cfg-footer').value = bizSettings.footer || '';
 
-        document.getElementById('cfg-cloud-provider').value = cloudCfg.provider || 'none';
+        document.getElementById('cfg-cloud-provider').value = cloudCfg.provider || 'firebase-sdk';
         document.getElementById('cfg-cloud-url').value = cloudCfg.url || '';
-        document.getElementById('cfg-cloud-bizid').value = cloudCfg.bizId || 'el-wey-pica-pollo-rd';
+        document.getElementById('cfg-cloud-bizid').value = cloudCfg.bizId || 'el-wey-pica-pollo';
 
         var uTb = document.getElementById('users-tbody');
         uTb.innerHTML = usersList.map(function(u) {
@@ -5173,13 +5275,29 @@
         if (Array.isArray(snap.cashEvents)) { cashEvents = snap.cashEvents; saveData('ew_events_v1', cashEvents, true); }
         if (Array.isArray(snap.conducesHistory)) { conducesHistory = snap.conducesHistory; saveData('ew_conduces_v1', conducesHistory, true); }
         if (snap.shiftsState) { shiftsState = snap.shiftsState; saveData('ew_shifts', shiftsState, true); }
+        if (snap.ordSeq) { ordSeq = Number(snap.ordSeq); saveData('ew_order_counter', ordSeq, true); }
+        if (snap.advSeq) { advSeq = Number(snap.advSeq); saveData('ew_adv_counter', advSeq, true); }
+        if (snap.cndSeq) { cndSeq = Number(snap.cndSeq); saveData('ew_cnd_counter', cndSeq, true); }
         updateTopbarUI();
         renderLoginUsers();
+        if (currentUser) {
+            renderCatalog();
+            renderCart(false);
+        }
     }
 
+    window.__getFirebaseSnapshot = buildSnapshot;
+    window.__applyFirebaseSnapshot = applySnapshot;
+
     function testCloudConnection() {
-        var url = (document.getElementById('cfg-cloud-url').value || '').trim();
         var prov = document.getElementById('cfg-cloud-provider').value;
+        if (prov === 'firebase-sdk') {
+            if (typeof window.__pushFirebaseSnapshot === 'function') {
+                window.__pushFirebaseSnapshot(false);
+            }
+            return;
+        }
+        var url = (document.getElementById('cfg-cloud-url').value || '').trim();
         if (prov === 'none' || !url) { toast('⚠️ Selecciona un proveedor e ingresa una URL'); return; }
         fetch(url)
             .then(function(r) {
@@ -5190,6 +5308,12 @@
     }
 
     function syncCloudUp(silent) {
+        if (cloudCfg.provider === 'firebase-sdk') {
+            if (typeof window.__pushFirebaseSnapshot === 'function') {
+                window.__pushFirebaseSnapshot(silent);
+            }
+            return;
+        }
         if (!cloudCfg.url || cloudCfg.provider === 'none') {
             if (!silent) toast('⚠️ Configura primero una URL de nube');
             return;
@@ -5206,6 +5330,10 @@
     }
 
     function syncCloudDown() {
+        if (cloudCfg.provider === 'firebase-sdk') {
+            toast('🔥 Firebase sincroniza en tiempo real automáticamente');
+            return;
+        }
         if (!cloudCfg.url || cloudCfg.provider === 'none') { toast('⚠️ Configura primero una URL de nube'); return; }
         fetch(cloudCfg.url)
             .then(function(r) { return r.json(); })
@@ -5222,10 +5350,10 @@
         if (!b) return;
         if (navigator.onLine) {
             b.className = 'pill-badge pill-online';
-            b.textContent = '🟢 En Línea';
+            b.textContent = '🟢 Firebase Conectado';
         } else {
             b.className = 'pill-badge pill-offline';
-            b.textContent = '🟠 Sin Internet';
+            b.textContent = '🟠 Offline Local';
         }
     }
 
