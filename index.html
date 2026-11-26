@@ -3083,7 +3083,7 @@
 ====================================================================== -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const DEFAULT_FB = {
         apiKey: "AIzaSyDec-RxOCiaLGtHhnb2FJXqDwvGWKrlpe0",
@@ -3100,51 +3100,91 @@
     let fbDb = null;
     let fbDocRef = null;
     let isApplyingRemote = false;
+    let unsubscribeSnap = null;
+    window.__fbConnected = false;
 
     function updateFirebaseStatusBadge(connected) {
+        window.__fbConnected = !!connected;
         const badge = document.getElementById('badge-net-status');
         if (!badge) return;
         if (connected && navigator.onLine) {
             badge.className = 'pill-badge pill-online';
             badge.textContent = '🟢 Firebase Sincronizado';
         } else if (navigator.onLine) {
-            badge.className = 'pill-badge pill-online';
-            badge.textContent = '🟢 En Línea';
+            badge.className = 'pill-badge pill-offline';
+            badge.textContent = '🟡 Conectando Firebase...';
         } else {
             badge.className = 'pill-badge pill-offline';
             badge.textContent = '🟠 Offline Local';
         }
     }
 
-    try {
-        const fbApp = initializeApp(DEFAULT_FB);
-        fbDb = getFirestore(fbApp);
-        fbDocRef = doc(fbDb, 'el_wey_pica_pollo_pos', 'estado_principal');
-        enableIndexedDbPersistence(fbDb).catch(function() {});
+    function applyRemotePayloadWhenReady(remote, forceApply) {
+        if (!remote || !remote.snapshot) return;
+        if (!forceApply && remote.senderId === CLIENT_ID) return;
+        if (!Array.isArray(remote.snapshot.products) || remote.snapshot.products.length === 0) return;
 
-        onSnapshot(fbDocRef, function(snap) {
-            updateFirebaseStatusBadge(true);
-            if (snap.exists()) {
-                const remote = snap.data();
-                if (remote && remote.snapshot && Array.isArray(remote.snapshot.products) && remote.snapshot.products.length > 0 && remote.senderId !== CLIENT_ID) {
-                    isApplyingRemote = true;
-                    if (typeof window.__applyFirebaseSnapshot === 'function') {
-                        window.__applyFirebaseSnapshot(remote.snapshot);
-                    }
+        const runApply = function() {
+            if (typeof window.__applyFirebaseSnapshot === 'function') {
+                isApplyingRemote = true;
+                try {
+                    window.__applyFirebaseSnapshot(remote.snapshot);
+                } finally {
                     isApplyingRemote = false;
                 }
             } else {
-                window.__pushFirebaseSnapshot(true);
+                setTimeout(runApply, 150);
             }
-        }, function() {
+        };
+        runApply();
+    }
+
+    async function connectFirebaseAuto() {
+        try {
+            if (!fbDb) {
+                const fbApp = initializeApp(DEFAULT_FB);
+                fbDb = getFirestore(fbApp);
+                fbDocRef = doc(fbDb, 'el_wey_pica_pollo_pos', 'estado_principal');
+            }
+
+            // Lectura inicial inmediata al abrir la página para garantizar sincronización en cualquier dispositivo
+            const initialSnap = await getDoc(fbDocRef);
+            updateFirebaseStatusBadge(true);
+            if (initialSnap.exists()) {
+                applyRemotePayloadWhenReady(initialSnap.data(), false);
+            } else if (typeof window.__pushFirebaseSnapshot === 'function') {
+                await window.__pushFirebaseSnapshot(true);
+            }
+
+            if (unsubscribeSnap) {
+                try { unsubscribeSnap(); } catch (e) {}
+            }
+
+            unsubscribeSnap = onSnapshot(fbDocRef, { includeMetadataChanges: false }, function(snap) {
+                updateFirebaseStatusBadge(true);
+                if (snap.exists()) {
+                    applyRemotePayloadWhenReady(snap.data(), false);
+                } else {
+                    window.__pushFirebaseSnapshot(true);
+                }
+            }, function(err) {
+                console.error('Error listener Firebase:', err);
+                updateFirebaseStatusBadge(false);
+                setTimeout(connectFirebaseAuto, 6000);
+            });
+        } catch (err) {
+            console.error('Error conectando Firebase:', err);
             updateFirebaseStatusBadge(false);
-        });
-    } catch (err) {
-        updateFirebaseStatusBadge(false);
+            setTimeout(connectFirebaseAuto, 6000);
+        }
     }
 
     window.__pushFirebaseSnapshot = async function(silent) {
-        if (!fbDocRef || isApplyingRemote) return;
+        if (isApplyingRemote) return;
+        if (!fbDocRef) {
+            await connectFirebaseAuto();
+            if (!fbDocRef) return;
+        }
         if (typeof window.__getFirebaseSnapshot !== 'function') return;
         try {
             await setDoc(fbDocRef, {
@@ -3157,13 +3197,46 @@
                 window.__notifyToast('🔥 Sincronizado con Firebase');
             }
         } catch (err) {
+            console.error('Error guardando en Firebase:', err);
             updateFirebaseStatusBadge(false);
+            if (!silent && typeof window.__notifyToast === 'function') {
+                window.__notifyToast('⚠️ Error al subir a Firebase, reintentando...');
+            }
         }
     };
 
+    window.__pullFirebaseSnapshot = async function(silent) {
+        if (!fbDocRef) {
+            await connectFirebaseAuto();
+            if (!fbDocRef) return;
+        }
+        try {
+            const snap = await getDoc(fbDocRef);
+            updateFirebaseStatusBadge(true);
+            if (snap.exists()) {
+                applyRemotePayloadWhenReady(snap.data(), true);
+                if (!silent && typeof window.__notifyToast === 'function') {
+                    window.__notifyToast('🔥 Datos descargados desde Firebase');
+                }
+            } else if (!silent && typeof window.__notifyToast === 'function') {
+                window.__notifyToast('ℹ️ Aún no hay datos guardados en Firebase');
+            }
+        } catch (err) {
+            updateFirebaseStatusBadge(false);
+            if (!silent && typeof window.__notifyToast === 'function') {
+                window.__notifyToast('⚠️ No se pudo descargar desde Firebase');
+            }
+        }
+    };
+
+    window.__reconnectFirebase = connectFirebaseAuto;
+
+    connectFirebaseAuto();
+
     window.addEventListener('online', function() {
-        updateFirebaseStatusBadge(true);
-        window.__pushFirebaseSnapshot(true);
+        connectFirebaseAuto().then(function() {
+            window.__pushFirebaseSnapshot(true);
+        });
     });
     window.addEventListener('offline', function() {
         updateFirebaseStatusBadge(false);
@@ -5640,7 +5713,9 @@
 
     function syncCloudDown() {
         if (cloudCfg.provider === 'firebase-sdk') {
-            toast('🔥 Firebase sincroniza en tiempo real automáticamente');
+            if (typeof window.__pullFirebaseSnapshot === 'function') {
+                window.__pullFirebaseSnapshot(false);
+            }
             return;
         }
         if (!cloudCfg.url || cloudCfg.provider === 'none') { toast('⚠️ Configura primero una URL de nube'); return; }
@@ -5657,9 +5732,15 @@
     function updateNetworkBadge() {
         var b = document.getElementById('badge-net-status');
         if (!b) return;
-        if (navigator.onLine) {
+        if (navigator.onLine && window.__fbConnected) {
             b.className = 'pill-badge pill-online';
-            b.textContent = '🟢 Firebase Conectado';
+            b.textContent = '🟢 Firebase Sincronizado';
+        } else if (navigator.onLine) {
+            b.className = 'pill-badge pill-offline';
+            b.textContent = '🟡 Conectando Firebase...';
+            if (typeof window.__reconnectFirebase === 'function') {
+                window.__reconnectFirebase();
+            }
         } else {
             b.className = 'pill-badge pill-offline';
             b.textContent = '🟠 Offline Local';
