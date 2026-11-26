@@ -280,6 +280,68 @@
             line-height: 1.1;
         }
 
+        #modal-text-pad {
+            z-index: 1250 !important;
+        }
+
+        .qwerty-card {
+            width: 100%;
+            max-width: 680px;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border: 2.5px solid #eab308;
+            border-radius: 20px;
+            padding: 16px 14px;
+            box-shadow: 0 25px 65px rgba(0, 0, 0, 0.65);
+            color: #ffffff;
+        }
+
+        .qwerty-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 7px;
+        }
+
+        .qwerty-key {
+            min-width: 44px;
+            height: 52px;
+            border-radius: 10px;
+            border: 2.5px solid rgba(255, 255, 255, 0.35);
+            background: radial-gradient(circle at 30% 30%, #3b82f6 0%, #1e3a8a 85%);
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.28);
+            cursor: pointer;
+        }
+
+        .qwerty-key:active {
+            transform: scale(0.92);
+            background: #2563eb;
+        }
+
+        .qwerty-key-wide {
+            min-width: 78px;
+            background: radial-gradient(circle at 30% 30%, #64748b 0%, #334155 85%);
+            font-size: 0.9rem;
+        }
+
+        .qwerty-key-space {
+            flex: 1;
+            max-width: 280px;
+            background: radial-gradient(circle at 30% 30%, #475569 0%, #1e293b 85%);
+        }
+
+        .qwerty-key-action {
+            background: radial-gradient(circle at 30% 30%, #22c55e 0%, #15803d 85%);
+            border-color: #fde047;
+            font-size: 0.85rem;
+        }
+
         /* =====================================================================
 3. BARRA SUPERIOR FIJA (.topbar) Y PESTAÑAS DE NAVEGACIÓN
         ====================================================================== */
@@ -1687,6 +1749,63 @@
             <button type="button" class="pin-circle-btn pin-circle-clear" data-action="num-key" data-k="CLEAR" title="Limpiar todo">LIMPIAR</button>
             <div></div>
             <button type="button" class="pin-circle-btn pin-circle-enter" data-action="num-key" data-k="ENTER">LISTO<span style="font-size:1.1rem;">↵</span></button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL TECLADO VIRTUAL QWERTY COMPLETO CON LETRAS Y SIGNOS -->
+<div id="modal-text-pad" class="modal-overlay">
+    <div class="qwerty-card">
+        <div class="pin-pad-header" style="margin-bottom:10px;">
+            <span id="text-pad-title" class="pin-pad-title">⌨️ TECLADO VIRTUAL</span>
+            <button type="button" class="modal-close" data-action="close-modal" data-modal="modal-text-pad">✕</button>
+        </div>
+        <div id="text-pad-display" class="pin-display-box" style="letter-spacing:1px;font-size:1.35rem;justify-content:flex-start;padding:0 14px;overflow-x:auto;white-space:nowrap;"></div>
+        
+        <div id="qwerty-keys-container">
+            <div class="qwerty-row">
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="q">Q</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="w">W</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="e">E</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="r">R</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="t">T</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="y">Y</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="u">U</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="i">I</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="o">O</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="p">P</button>
+                <button type="button" class="qwerty-key qwerty-key-wide" data-action="text-key" data-k="BACK">⌫</button>
+            </div>
+            <div class="qwerty-row">
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="a">A</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="s">S</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="d">D</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="f">F</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="g">G</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="h">H</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="j">J</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="k">K</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="l">L</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="ñ">Ñ</button>
+            </div>
+            <div class="qwerty-row">
+                <button type="button" class="qwerty-key qwerty-key-wide" data-action="text-key" data-k="SHIFT">⇧ MAYÚS</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="z">Z</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="x">X</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="c">C</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="v">V</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="b">B</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="n">N</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="m">M</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k=".">.</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="-">-</button>
+            </div>
+            <div class="qwerty-row">
+                <button type="button" class="qwerty-key qwerty-key-wide" data-action="text-key" data-k="123">123/@</button>
+                <button type="button" class="qwerty-key qwerty-key-space" data-action="text-key" data-k="SPACE">ESPACIO</button>
+                <button type="button" class="qwerty-key" data-action="text-key" data-k="_">_</button>
+                <button type="button" class="qwerty-key qwerty-key-action" data-action="text-key" data-k="ENTER">LISTO ↵</button>
+            </div>
         </div>
     </div>
 </div>
@@ -5587,6 +5706,8 @@
                 handlePinKey(el.getAttribute('data-k'));
             } else if (act === 'num-key') {
                 handleUniversalNumKey(el.getAttribute('data-k'));
+            } else if (act === 'text-key') {
+                handleUniversalTextKey(el.getAttribute('data-k'));
             } else if (act === 'do-login') {
                 handleLogin();
             } else if (act === 'logout') {
@@ -6283,6 +6404,177 @@
             openUniversalNumPad(inp);
         }
     });
+
+
+    /* =========================================================================
+       TECLADO VIRTUAL QWERTY COMPLETO CON LETRAS Y SIGNOS
+    ========================================================================= */
+    var activeTextTarget = null;
+    var textPadBuffer = '';
+    var textIsUpper = true;
+    var textIsSymbols = false;
+
+    var SYMBOLS_ROW_1 = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+    var SYMBOLS_ROW_2 = ['@', '#', '$', '_', '&', '-', '+', '(', ')', '/'];
+    var SYMBOLS_ROW_3 = ['*', '"', "'", ':', ';', '!', '?', ',', '.', '@'];
+
+    function updateQwertyLayout() {
+        var container = document.getElementById('qwerty-keys-container');
+        if (!container) return;
+        if (textIsSymbols) {
+            container.innerHTML = '<div class="qwerty-row">' +
+                SYMBOLS_ROW_1.map(function(s) { return '<button type="button" class="qwerty-key" data-action="text-key" data-k="' + s + '">' + s + '</button>'; }).join('') +
+                '<button type="button" class="qwerty-key qwerty-key-wide" data-action="text-key" data-k="BACK">⌫</button>' +
+            '</div>' +
+            '<div class="qwerty-row">' +
+                SYMBOLS_ROW_2.map(function(s) { return '<button type="button" class="qwerty-key" data-action="text-key" data-k="' + s + '">' + s + '</button>'; }).join('') +
+            '</div>' +
+            '<div class="qwerty-row">' +
+                '<button type="button" class="qwerty-key qwerty-key-wide" data-action="text-key" data-k="ABC" style="font-size:0.8rem;">ABC</button>' +
+                SYMBOLS_ROW_3.map(function(s) { return '<button type="button" class="qwerty-key" data-action="text-key" data-k="' + s + '">' + s + '</button>'; }).join('') +
+            '</div>' +
+            '<div class="qwerty-row">' +
+                '<button type="button" class="qwerty-key qwerty-key-wide" data-action="text-key" data-k="123">ABC</button>' +
+                '<button type="button" class="qwerty-key qwerty-key-space" data-action="text-key" data-k="SPACE">ESPACIO</button>' +
+                '<button type="button" class="qwerty-key" data-action="text-key" data-k="_">_</button>' +
+                '<button type="button" class="qwerty-key qwerty-key-action" data-action="text-key" data-k="ENTER">LISTO ↵</button>' +
+            '</div>';
+        } else {
+            var r1 = ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'];
+            var r2 = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ñ'];
+            var r3 = ['z', 'x', 'c', 'v', 'b', 'n', 'm'];
+            
+            container.innerHTML = '<div class="qwerty-row">' +
+                r1.map(function(c) { var ch = textIsUpper ? c.toUpperCase() : c; return '<button type="button" class="qwerty-key" data-action="text-key" data-k="' + ch + '">' + ch + '</button>'; }).join('') +
+                '<button type="button" class="qwerty-key qwerty-key-wide" data-action="text-key" data-k="BACK">⌫</button>' +
+            '</div>' +
+            '<div class="qwerty-row">' +
+                r2.map(function(c) { var ch = textIsUpper ? c.toUpperCase() : c; return '<button type="button" class="qwerty-key" data-action="text-key" data-k="' + ch + '">' + ch + '</button>'; }).join('') +
+            '</div>' +
+            '<div class="qwerty-row">' +
+                '<button type="button" class="qwerty-key qwerty-key-wide" data-action="text-key" data-k="SHIFT" style="background:' + (textIsUpper ? '#2563eb' : '#334155') + ';">⇧ MAYÚS</button>' +
+                r3.map(function(c) { var ch = textIsUpper ? c.toUpperCase() : c; return '<button type="button" class="qwerty-key" data-action="text-key" data-k="' + ch + '">' + ch + '</button>'; }).join('') +
+                '<button type="button" class="qwerty-key" data-action="text-key" data-k=".">.</button>' +
+                '<button type="button" class="qwerty-key" data-action="text-key" data-k="-">-</button>' +
+            '</div>' +
+            '<div class="qwerty-row">' +
+                '<button type="button" class="qwerty-key qwerty-key-wide" data-action="text-key" data-k="123">123/@</button>' +
+                '<button type="button" class="qwerty-key qwerty-key-space" data-action="text-key" data-k="SPACE">ESPACIO</button>' +
+                '<button type="button" class="qwerty-key" data-action="text-key" data-k="_">_</button>' +
+                '<button type="button" class="qwerty-key qwerty-key-action" data-action="text-key" data-k="ENTER">LISTO ↵</button>' +
+            '</div>';
+        }
+    }
+
+    function getTextFieldLabel(inp) {
+        if (!inp) return '⌨️ TECLADO VIRTUAL';
+        var fld = inp.closest('.fld');
+        if (fld) {
+            var lbl = fld.querySelector('label');
+            if (lbl && lbl.textContent.trim()) {
+                return '⌨️ ' + lbl.textContent.replace('*', '').trim().toUpperCase();
+            }
+        }
+        return '⌨️ TECLADO VIRTUAL';
+    }
+
+    function updateUniversalTextDisplay() {
+        var disp = document.getElementById('text-pad-display');
+        if (!disp) return;
+        if (!textPadBuffer.length) {
+            disp.textContent = 'Escribe aquí...';
+            disp.style.color = '#64748b';
+        } else {
+            disp.textContent = textPadBuffer;
+            disp.style.color = '#ffffff';
+        }
+    }
+
+    function openUniversalTextPad(inp) {
+        if (!inp || inp.disabled) return;
+        activeTextTarget = inp;
+        textPadBuffer = String(inp.value || '');
+        textIsUpper = true;
+        textIsSymbols = false;
+
+        var titleEl = document.getElementById('text-pad-title');
+        if (titleEl) titleEl.textContent = getTextFieldLabel(inp);
+
+        updateQwertyLayout();
+        updateUniversalTextDisplay();
+        openMod('modal-text-pad');
+    }
+
+    function commitUniversalTextValue() {
+        if (!activeTextTarget) {
+            closeMod('modal-text-pad');
+            return;
+        }
+        activeTextTarget.value = textPadBuffer;
+        activeTextTarget.dispatchEvent(new Event('input', { bubbles: true }));
+        activeTextTarget.dispatchEvent(new Event('change', { bubbles: true }));
+        var targetRef = activeTextTarget;
+        activeTextTarget = null;
+        closeMod('modal-text-pad');
+        try { targetRef.blur(); } catch (e) {}
+    }
+
+    function handleUniversalTextKey(k) {
+        if (k === 'BACK') {
+            textPadBuffer = textPadBuffer.slice(0, -1);
+            updateUniversalTextDisplay();
+            return;
+        }
+        if (k === 'ENTER') {
+            commitUniversalTextValue();
+            return;
+        }
+        if (k === 'SHIFT') {
+            textIsUpper = !textIsUpper;
+            updateQwertyLayout();
+            return;
+        }
+        if (k === '123' || k === 'ABC') {
+            textIsSymbols = !textIsSymbols;
+            updateQwertyLayout();
+            return;
+        }
+        if (k === 'SPACE') {
+            textPadBuffer += ' ';
+            updateUniversalTextDisplay();
+            return;
+        }
+        textPadBuffer += k;
+        updateUniversalTextDisplay();
+    }
+
+    function isUniversalTextInput(el) {
+        if (!el || el.tagName !== 'INPUT') return false;
+        if (el.type === 'number' || el.type === 'password' || el.type === 'date' || el.type === 'hidden') return false;
+        if (el.hasAttribute('data-numpad')) return false;
+        // Solo aplica en inputs de texto general (nombres, descripciones, teléfonos, etc.)
+        if (el.type === 'text' || el.type === 'url' || el.type === 'email' || !el.type) return true;
+        return false;
+    }
+
+    document.addEventListener('pointerdown', function(e) {
+        var inp = e.target.closest('input');
+        if (isUniversalTextInput(inp)) {
+            e.preventDefault();
+            openUniversalTextPad(inp);
+        }
+    });
+
+    document.addEventListener('focusin', function(e) {
+        var inp = e.target;
+        var textModal = document.getElementById('modal-text-pad');
+        var numModal = document.getElementById('modal-num-pad');
+        var pinModal = document.getElementById('modal-pin-pad');
+        if (isUniversalTextInput(inp) && (!textModal || !textModal.classList.contains('open')) && (!numModal || !numModal.classList.contains('open')) && (!pinModal || !pinModal.classList.contains('open'))) {
+            openUniversalTextPad(inp);
+        }
+    });
+
 
 
     document.getElementById('inp-menu-search').addEventListener('input', function() {
