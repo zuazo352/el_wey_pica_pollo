@@ -2843,7 +2843,7 @@
 
 <!-- MODAL CATEGORÍAS -->
 <div id="modal-cats" class="modal-overlay">
-    <div class="modal-box" style="max-width:420px;">
+    <div class="modal-box" style="max-width:500px;">
         <div class="modal-head">
             <h3>🏷️ Categorías del Menú</h3>
             <button type="button" class="modal-close" data-action="close-modal" data-modal="modal-cats">✕</button>
@@ -2894,6 +2894,9 @@
         appId: "1:607583707173:web:69d95b8ee9e7c0f9cd5fcc"
     };
 
+    const CLIENT_ID = localStorage.getItem('ew_client_id') || ('client_' + Math.random().toString(36).substr(2, 9));
+    localStorage.setItem('ew_client_id', CLIENT_ID);
+
     let fbDb = null;
     let fbDocRef = null;
     let isApplyingRemote = false;
@@ -2903,7 +2906,7 @@
         if (!badge) return;
         if (connected && navigator.onLine) {
             badge.className = 'pill-badge pill-online';
-            badge.textContent = '🟢 Firebase Conectado';
+            badge.textContent = '🟢 Firebase Sincronizado';
         } else if (navigator.onLine) {
             badge.className = 'pill-badge pill-online';
             badge.textContent = '🟢 En Línea';
@@ -2923,17 +2926,12 @@
             updateFirebaseStatusBadge(true);
             if (snap.exists()) {
                 const remote = snap.data();
-                const localTs = Number(localStorage.getItem('ew_fb_last_ts') || 0);
-                // Solo aplica desde la nube si hay datos remotos reales y más recientes, nunca sobrescribe con datos vacíos
-                if (remote && remote.snapshot && Array.isArray(remote.snapshot.products) && remote.snapshot.products.length > 0 && Number(remote.updatedAtMs || 0) > localTs) {
+                if (remote && remote.snapshot && Array.isArray(remote.snapshot.products) && remote.snapshot.products.length > 0 && remote.senderId !== CLIENT_ID) {
                     isApplyingRemote = true;
-                    localStorage.setItem('ew_fb_last_ts', String(remote.updatedAtMs));
                     if (typeof window.__applyFirebaseSnapshot === 'function') {
                         window.__applyFirebaseSnapshot(remote.snapshot);
                     }
                     isApplyingRemote = false;
-                } else if (localTs === 0 && typeof window.__pushFirebaseSnapshot === 'function') {
-                    window.__pushFirebaseSnapshot(true);
                 }
             } else {
                 window.__pushFirebaseSnapshot(true);
@@ -2949,10 +2947,9 @@
         if (!fbDocRef || isApplyingRemote) return;
         if (typeof window.__getFirebaseSnapshot !== 'function') return;
         try {
-            const nowMs = Date.now();
-            localStorage.setItem('ew_fb_last_ts', String(nowMs));
             await setDoc(fbDocRef, {
-                updatedAtMs: nowMs,
+                senderId: CLIENT_ID,
+                updatedAtMs: Date.now(),
                 snapshot: window.__getFirebaseSnapshot()
             });
             updateFirebaseStatusBadge(true);
@@ -5378,6 +5375,31 @@
         }
     }
 
+    function renderCatsModalList() {
+        var cBox = document.getElementById('cats-list-box');
+        if (!cBox) return;
+        if (!categories.length) {
+            cBox.innerHTML = '<div style="text-align:center;padding:16px;color:#64748b;font-weight:800;">No hay categorías registradas</div>';
+            return;
+        }
+        cBox.innerHTML = categories.map(function(c, i) {
+            var disableUp = i === 0 ? ' disabled' : '';
+            var disableDown = i === categories.length - 1 ? ' disabled' : '';
+            return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:7px 10px;background:#f8fafc;border-radius:8px;border:1.5px solid var(--border);font-weight:800;">' +
+                '<div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;">' +
+                    '<span style="background:#18181b;color:#fde047;min-width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:0.74rem;font-weight:900;">' + (i + 1) + '</span>' +
+                    '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(c) + '</span>' +
+                '</div>' +
+                '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">' +
+                    '<button type="button" class="tab-btn" style="height:30px;padding:0 8px;" data-action="move-cat-up" data-idx="' + i + '" title="Subir orden"' + disableUp + '>▲</button>' +
+                    '<button type="button" class="tab-btn" style="height:30px;padding:0 8px;" data-action="move-cat-down" data-idx="' + i + '" title="Bajar orden"' + disableDown + '>▼</button>' +
+                    '<button type="button" class="tab-btn" style="height:30px;padding:0 9px;" data-action="rename-cat" data-idx="' + i + '" title="Cambiar nombre">✏️</button>' +
+                    '<button type="button" class="btn-cancel" style="height:30px;padding:0 9px;" data-action="del-cat" data-idx="' + i + '" title="Eliminar categoría">✕</button>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+    }
+
     /* =========================================================================
        M. DELEGACIÓN CENTRALIZADA DE EVENTOS (DATA-ACTION) CON TRY/CATCH
     ========================================================================= */
@@ -5711,29 +5733,74 @@
             } else if (act === 'save-product') {
                 saveProductForm();
             } else if (act === 'open-cat-modal') {
-                var cBox = document.getElementById('cats-list-box');
-                cBox.innerHTML = categories.map(function(c, i) {
-                    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);font-weight:800;">' +
-                        '<span>' + escHtml(c) + '</span>' +
-                        '<button type="button" class="btn-cancel" style="height:26px;padding:0 8px;" data-action="del-cat" data-idx="' + i + '">✕</button>' +
-                    '</div>';
-                }).join('');
+                renderCatsModalList();
                 openMod('modal-cats');
             } else if (act === 'add-cat') {
                 var nc = (document.getElementById('inp-new-cat').value || '').trim();
-                if (nc && categories.indexOf(nc) === -1) {
-                    categories.push(nc);
-                    saveData('ew_cats_v1', categories);
-                    document.getElementById('inp-new-cat').value = '';
-                    closeMod('modal-cats');
-                    renderCatalog();
-                    toast('✓ Categoría creada');
-                }
-            } else if (act === 'del-cat') {
-                categories.splice(Number(el.getAttribute('data-idx')), 1);
+                if (!nc) { toast('⚠️ Escribe el nombre de la categoría'); return; }
+                if (categories.indexOf(nc) !== -1) { toast('⚠️ Ya existe una categoría con ese nombre'); return; }
+                categories.push(nc);
                 saveData('ew_cats_v1', categories);
-                closeMod('modal-cats');
+                document.getElementById('inp-new-cat').value = '';
+                renderCatsModalList();
                 renderCatalog();
+                toast('✓ Categoría creada');
+            } else if (act === 'move-cat-up') {
+                var upIdx = Number(el.getAttribute('data-idx'));
+                if (upIdx > 0 && upIdx < categories.length) {
+                    var tmpUp = categories[upIdx - 1];
+                    categories[upIdx - 1] = categories[upIdx];
+                    categories[upIdx] = tmpUp;
+                    saveData('ew_cats_v1', categories);
+                    renderCatsModalList();
+                    renderCatalog();
+                    toast('⬆️ Categoría subida en el orden');
+                }
+            } else if (act === 'move-cat-down') {
+                var dnIdx = Number(el.getAttribute('data-idx'));
+                if (dnIdx >= 0 && dnIdx < categories.length - 1) {
+                    var tmpDn = categories[dnIdx + 1];
+                    categories[dnIdx + 1] = categories[dnIdx];
+                    categories[dnIdx] = tmpDn;
+                    saveData('ew_cats_v1', categories);
+                    renderCatsModalList();
+                    renderCatalog();
+                    toast('⬇️ Categoría bajada en el orden');
+                }
+            } else if (act === 'rename-cat') {
+                var rnIdx = Number(el.getAttribute('data-idx'));
+                var oldName = categories[rnIdx];
+                if (oldName == null) return;
+                var newName = prompt('Nuevo nombre para la categoría "' + oldName + '":', oldName);
+                if (newName === null) return;
+                newName = newName.trim();
+                if (!newName) { toast('⚠️ El nombre no puede estar vacío'); return; }
+                if (newName === oldName) return;
+                if (categories.indexOf(newName) !== -1) { toast('⚠️ Ya existe otra categoría con ese nombre'); return; }
+                categories[rnIdx] = newName;
+                for (var pi = 0; pi < products.length; pi++) {
+                    if (products[pi].category === oldName) {
+                        products[pi].category = newName;
+                    }
+                }
+                if (activeCatFilter === oldName) {
+                    activeCatFilter = newName;
+                }
+                saveData('ew_cats_v1', categories);
+                saveData('ew_products_v4', products);
+                renderCatsModalList();
+                renderProductsTable();
+                renderCatalog();
+                toast('✏️ Categoría renombrada a "' + newName + '"');
+            } else if (act === 'del-cat') {
+                var delIdx = Number(el.getAttribute('data-idx'));
+                var removedCat = categories[delIdx];
+                categories.splice(delIdx, 1);
+                if (activeCatFilter === removedCat) activeCatFilter = 'Todas';
+                saveData('ew_cats_v1', categories);
+                renderCatsModalList();
+                renderCatalog();
+                toast('🗑️ Categoría eliminada');
             } else if (act === 'reprint-sale') {
                 var sObj = salesHistory.find(function(x) { return x.id === el.getAttribute('data-id'); });
                 if (sObj) openReceiptViewer('Ticket de Venta 80mm - ' + sObj.code, '#18181b', renderTicket80HTML(sObj));
