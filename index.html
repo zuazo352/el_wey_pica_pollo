@@ -223,11 +223,27 @@
             box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
         }
 
+        #modal-num-pad {
+            z-index: 1200 !important;
+        }
+
         .pin-circle-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
+            gap: 11px;
             justify-items: center;
+        }
+
+        .pin-circle-dot {
+            background: radial-gradient(circle at 30% 30%, #f59e0b 0%, #b45309 85%);
+            border-color: #fde047;
+            font-size: 1.7rem;
+        }
+
+        .pin-circle-clear {
+            background: radial-gradient(circle at 30% 30%, #dc2626 0%, #991b1b 85%);
+            border-color: #fecaca;
+            font-size: 0.9rem;
         }
 
         .pin-circle-btn {
@@ -1647,6 +1663,34 @@
     </div>
 </div>
 
+<!-- MODAL TECLADO NUMÉRICO CIRCULAR UNIVERSAL PARA TODOS LOS CAMPOS NUMÉRICOS DEL POS -->
+<div id="modal-num-pad" class="modal-overlay">
+    <div class="pin-pad-card">
+        <div class="pin-pad-header">
+            <span id="num-pad-title" class="pin-pad-title">🔢 INGRESAR VALOR NUMÉRICO</span>
+            <button type="button" class="modal-close" data-action="close-modal" data-modal="modal-num-pad">✕</button>
+        </div>
+        <div id="num-pad-display" class="pin-display-box" style="letter-spacing:3px;font-size:1.65rem;">0</div>
+        <div class="pin-circle-grid">
+            <button type="button" class="pin-circle-btn" data-action="num-key" data-k="1">1</button>
+            <button type="button" class="pin-circle-btn" data-action="num-key" data-k="2">2</button>
+            <button type="button" class="pin-circle-btn" data-action="num-key" data-k="3">3</button>
+            <button type="button" class="pin-circle-btn" data-action="num-key" data-k="4">4</button>
+            <button type="button" class="pin-circle-btn" data-action="num-key" data-k="5">5</button>
+            <button type="button" class="pin-circle-btn" data-action="num-key" data-k="6">6</button>
+            <button type="button" class="pin-circle-btn" data-action="num-key" data-k="7">7</button>
+            <button type="button" class="pin-circle-btn" data-action="num-key" data-k="8">8</button>
+            <button type="button" class="pin-circle-btn" data-action="num-key" data-k="9">9</button>
+            <button type="button" id="btn-num-dot" class="pin-circle-btn pin-circle-dot" data-action="num-key" data-k="." title="Punto decimal">.</button>
+            <button type="button" class="pin-circle-btn" data-action="num-key" data-k="0">0</button>
+            <button type="button" class="pin-circle-btn pin-circle-back" data-action="num-key" data-k="BACK" title="Borrar dígito">⌫</button>
+            <button type="button" class="pin-circle-btn pin-circle-clear" data-action="num-key" data-k="CLEAR" title="Limpiar todo">LIMPIAR</button>
+            <div></div>
+            <button type="button" class="pin-circle-btn pin-circle-enter" data-action="num-key" data-k="ENTER">LISTO<span style="font-size:1.1rem;">↵</span></button>
+        </div>
+    </div>
+</div>
+
 <!-- =====================================================================
 2. APLICACIÓN PRINCIPAL DEL POS
 ====================================================================== -->
@@ -2303,7 +2347,7 @@
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
                         <div class="fld">
                             <label>PIN / Clave</label>
-                            <input type="text" id="usr-pass" placeholder="Ej. 2222">
+                            <input type="text" id="usr-pass" data-numpad="pin" placeholder="Ej. 2222">
                         </div>
                         <div class="fld">
                             <label>Rol</label>
@@ -5541,6 +5585,8 @@
                 openPinPadModal();
             } else if (act === 'pin-key') {
                 handlePinKey(el.getAttribute('data-k'));
+            } else if (act === 'num-key') {
+                handleUniversalNumKey(el.getAttribute('data-k'));
             } else if (act === 'do-login') {
                 handleLogin();
             } else if (act === 'logout') {
@@ -6079,6 +6125,165 @@
             closeMod('modal-pin-pad');
         }
     });
+
+    document.addEventListener('keydown', function(e) {
+        var numModal = document.getElementById('modal-num-pad');
+        if (!numModal || !numModal.classList.contains('open')) return;
+        if (e.key >= '0' && e.key <= '9') {
+            e.preventDefault();
+            handleUniversalNumKey(e.key);
+        } else if (e.key === '.') {
+            e.preventDefault();
+            handleUniversalNumKey('.');
+        } else if (e.key === 'Backspace') {
+            e.preventDefault();
+            handleUniversalNumKey('BACK');
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            handleUniversalNumKey('ENTER');
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeMod('modal-num-pad');
+        }
+    });
+    /* =========================================================================
+       TECLADO NUMÉRICO CIRCULAR UNIVERSAL PARA TODOS LOS CAMPOS NUMÉRICOS
+    ========================================================================= */
+    var activeNumTarget = null;
+    var numPadBuffer = '';
+    var numPadAllowDecimal = true;
+    var numPadFreshStart = true;
+
+    function getNumericFieldLabel(inp) {
+        if (!inp) return '🔢 INGRESAR NÚMERO';
+        var fld = inp.closest('.fld');
+        if (fld) {
+            var lbl = fld.querySelector('label');
+            if (lbl && lbl.textContent.trim()) {
+                return '🔢 ' + lbl.textContent.replace('*', '').trim().toUpperCase();
+            }
+        }
+        return '🔢 INGRESAR NÚMERO';
+    }
+
+    function updateUniversalNumPadDisplay() {
+        var disp = document.getElementById('num-pad-display');
+        if (!disp) return;
+        if (!numPadBuffer.length) {
+            disp.textContent = '0';
+            disp.style.color = '#64748b';
+        } else {
+            disp.textContent = numPadBuffer;
+            disp.style.color = '#fde047';
+        }
+    }
+
+    function openUniversalNumPad(inp) {
+        if (!inp || inp.disabled) return;
+        activeNumTarget = inp;
+        var mode = inp.getAttribute('data-numpad') || '';
+        numPadAllowDecimal = (mode !== 'pin');
+        numPadBuffer = String(inp.value || '').trim();
+        numPadFreshStart = true;
+
+        var titleEl = document.getElementById('num-pad-title');
+        if (titleEl) titleEl.textContent = getNumericFieldLabel(inp);
+
+        var dotBtn = document.getElementById('btn-num-dot');
+        if (dotBtn) {
+            dotBtn.style.visibility = numPadAllowDecimal ? 'visible' : 'hidden';
+        }
+
+        updateUniversalNumPadDisplay();
+        openMod('modal-num-pad');
+    }
+
+    function commitUniversalNumPadValue() {
+        if (!activeNumTarget) {
+            closeMod('modal-num-pad');
+            return;
+        }
+        var finalVal = numPadBuffer;
+        if (finalVal.endsWith('.')) {
+            finalVal = finalVal.slice(0, -1);
+        }
+        activeNumTarget.value = finalVal;
+        activeNumTarget.dispatchEvent(new Event('input', { bubbles: true }));
+        activeNumTarget.dispatchEvent(new Event('change', { bubbles: true }));
+        var targetRef = activeNumTarget;
+        activeNumTarget = null;
+        closeMod('modal-num-pad');
+        try { targetRef.blur(); } catch (e) {}
+    }
+
+    function handleUniversalNumKey(k) {
+        if (k === 'CLEAR') {
+            numPadBuffer = '';
+            numPadFreshStart = false;
+            updateUniversalNumPadDisplay();
+            return;
+        }
+        if (k === 'BACK') {
+            if (numPadFreshStart) {
+                numPadBuffer = numPadBuffer.slice(0, -1);
+                numPadFreshStart = false;
+            } else {
+                numPadBuffer = numPadBuffer.slice(0, -1);
+            }
+            updateUniversalNumPadDisplay();
+            return;
+        }
+        if (k === 'ENTER') {
+            commitUniversalNumPadValue();
+            return;
+        }
+        if (k === '.') {
+            if (!numPadAllowDecimal) return;
+            if (numPadFreshStart) {
+                numPadBuffer = '0.';
+                numPadFreshStart = false;
+                updateUniversalNumPadDisplay();
+                return;
+            }
+            if (numPadBuffer.indexOf('.') !== -1) return;
+            numPadBuffer = numPadBuffer.length ? (numPadBuffer + '.') : '0.';
+            updateUniversalNumPadDisplay();
+            return;
+        }
+        if (numPadFreshStart) {
+            numPadBuffer = String(k);
+            numPadFreshStart = false;
+        } else if (numPadBuffer.length < 14) {
+            if (numPadBuffer === '0') numPadBuffer = String(k);
+            else numPadBuffer += String(k);
+        }
+        updateUniversalNumPadDisplay();
+    }
+
+    function isUniversalNumericInput(el) {
+        if (!el || el.tagName !== 'INPUT') return false;
+        if (el.id === 'login-pass-input' || el.id === 'inp-weight-val') return false;
+        if (el.type === 'number') return true;
+        if (el.hasAttribute('data-numpad')) return true;
+        return false;
+    }
+
+    document.addEventListener('pointerdown', function(e) {
+        var inp = e.target.closest('input');
+        if (isUniversalNumericInput(inp)) {
+            e.preventDefault();
+            openUniversalNumPad(inp);
+        }
+    });
+
+    document.addEventListener('focusin', function(e) {
+        var inp = e.target;
+        var numModal = document.getElementById('modal-num-pad');
+        if (isUniversalNumericInput(inp) && (!numModal || !numModal.classList.contains('open'))) {
+            openUniversalNumPad(inp);
+        }
+    });
+
 
     document.getElementById('inp-menu-search').addEventListener('input', function() {
         activeCatPage = 1;
