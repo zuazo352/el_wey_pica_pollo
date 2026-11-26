@@ -778,16 +778,32 @@
             color: #fee2e2;
         }
 
+        .prod-cat-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+            margin-bottom: 3px;
+            min-width: 0;
+        }
+
         .prod-cat-sub {
             font-size: 0.56rem;
             font-weight: 800;
             color: var(--muted);
             text-transform: uppercase;
             letter-spacing: 0.2px;
-            margin-bottom: 1px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            min-width: 0;
+        }
+
+        .prod-cat-badges {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            flex-shrink: 0;
         }
 
         .prod-name {
@@ -3651,13 +3667,15 @@
             return '<button type="button" class="prod-card' + cardOut + '" data-action="add-prod" data-id="' + p.id + '">' +
                 '<div class="prod-img-wrap">' +
                     '<img src="' + escHtml(imgSrc) + '" alt="' + escHtml(p.name) + '">' +
-                    '<div class="prod-img-badges">' +
-                        '<span class="badge-unit' + unitClass + '">' + escHtml(unitText) + '</span>' +
-                        '<span class="badge-stock' + stClass + '">Disp: ' + fmtQty(st) + '</span>' +
-                    '</div>' +
                 '</div>' +
                 '<div>' +
-                    '<div class="prod-cat-sub">' + escHtml(p.category) + '</div>' +
+                    '<div class="prod-cat-row">' +
+                        '<span class="prod-cat-sub">' + escHtml(p.category) + '</span>' +
+                        '<span class="prod-cat-badges">' +
+                            '<span class="badge-unit' + unitClass + '">' + escHtml(unitText) + '</span>' +
+                            '<span class="badge-stock' + stClass + '">Disp: ' + fmtQty(st) + '</span>' +
+                        '</span>' +
+                    '</div>' +
                     '<div class="prod-name">' + escHtml(p.name) + '</div>' +
                     '<div class="prod-price-row">' +
                         '<span class="prod-price">' + fmtMoney(uPrice) + '</span>' +
