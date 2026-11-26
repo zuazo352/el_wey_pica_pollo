@@ -2325,6 +2325,27 @@
                             <label class="perm-chk"><input type="checkbox" id="perm-config"> ⚙️ Configuración</label>
                         </div>
                     </div>
+                    <div class="fld">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <label>🏷️ Categorías Visibles en Ventas</label>
+                            <label class="perm-chk" style="font-size:0.74rem;color:var(--info);"><input type="checkbox" id="usr-cats-all" checked> Todas las categorías</label>
+                        </div>
+                        <div id="usr-cats-box" class="perm-grid" style="display:none;max-height:130px;overflow-y:auto;"></div>
+                    </div>
+                    <div class="fld">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <label>🍗 Artículos / Productos Visibles en Ventas</label>
+                            <label class="perm-chk" style="font-size:0.74rem;color:var(--success);"><input type="checkbox" id="usr-prods-all" checked> Todos los artículos</label>
+                        </div>
+                        <div id="usr-prods-wrap" style="display:none;background:#f8fafc;border:1.5px solid var(--border);border-radius:9px;padding:8px;">
+                            <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+                                <input type="text" id="usr-prods-filter" placeholder="🔍 Filtrar artículo..." style="flex:1;min-height:32px;padding:0 8px;font-size:0.78rem;">
+                                <button type="button" class="tab-btn" style="height:32px;padding:0 8px;font-size:0.72rem;" data-action="usr-prods-check-all">✓ Marcar todos</button>
+                                <button type="button" class="tab-btn" style="height:32px;padding:0 8px;font-size:0.72rem;" data-action="usr-prods-uncheck-all">✕ Limpiar</button>
+                            </div>
+                            <div id="usr-prods-box" style="display:grid;grid-template-columns:1fr;gap:4px;max-height:165px;overflow-y:auto;"></div>
+                        </div>
+                    </div>
                     <button type="button" class="btn-primary-green" data-action="add-user">➕ Guardar / Actualizar Usuario</button>
 
                     <div class="card-table" style="margin-top:6px;">
@@ -3547,9 +3568,30 @@
     /* =========================================================================
        F. MÓDULO DE VENTAS CON PAGINACIÓN (8 ÍTEMS) Y CARRITO DESLIZABLE FIJO
     ========================================================================= */
+    function getUserVisibleCategories(user) {
+        var u = user || getActiveCashier();
+        if (!u || !Array.isArray(u.allowedCategories)) return categories.slice();
+        return categories.filter(function(c) { return u.allowedCategories.indexOf(c) !== -1; });
+    }
+
+    function isProductVisibleForUser(prod, user) {
+        if (!prod) return false;
+        var u = user || getActiveCashier();
+        if (!u) return true;
+        if (Array.isArray(u.allowedCategories) && u.allowedCategories.indexOf(prod.category) === -1) {
+            return false;
+        }
+        if (Array.isArray(u.allowedProducts) && u.allowedProducts.indexOf(Number(prod.id)) === -1) {
+            return false;
+        }
+        return true;
+    }
+
     function getFilteredMenuProducts() {
         var q = (document.getElementById('inp-menu-search').value || '').toLowerCase().trim();
+        var u = getActiveCashier();
         return products.filter(function(p) {
+            if (!isProductVisibleForUser(p, u)) return false;
             var matchCat = (activeCatFilter === 'Todas' || p.category === activeCatFilter);
             var matchQ = !q || p.name.toLowerCase().indexOf(q) !== -1 || (p.barcode && p.barcode.toLowerCase().indexOf(q) !== -1);
             return matchCat && matchQ;
@@ -3558,7 +3600,11 @@
 
     function renderCatalog() {
         var catBar = document.getElementById('cat-bar');
-        var allCats = ['Todas'].concat(categories);
+        var visibleCats = getUserVisibleCategories(getActiveCashier());
+        if (activeCatFilter !== 'Todas' && visibleCats.indexOf(activeCatFilter) === -1) {
+            activeCatFilter = 'Todas';
+        }
+        var allCats = ['Todas'].concat(visibleCats);
         catBar.innerHTML = allCats.map(function(c) {
             var act = c === activeCatFilter ? ' active' : '';
             return '<button type="button" class="cat-chip' + act + '" data-action="filter-cat" data-cat="' + escHtml(c) + '">' + escHtml(c) + '</button>';
@@ -5216,11 +5262,73 @@
         });
     }
 
-    function formatPermissionsShort(perms) {
+    var draftSelectedCats = [];
+    var draftSelectedProds = [];
+
+    function renderUserAccessSelectors(allowedCats, allowedProds) {
+        var catsAllChk = document.getElementById('usr-cats-all');
+        var catsBox = document.getElementById('usr-cats-box');
+        var prodsAllChk = document.getElementById('usr-prods-all');
+        var prodsWrap = document.getElementById('usr-prods-wrap');
+        if (!catsAllChk || !catsBox || !prodsAllChk || !prodsWrap) return;
+
+        var restrictCats = Array.isArray(allowedCats);
+        catsAllChk.checked = !restrictCats;
+        draftSelectedCats = restrictCats ? allowedCats.slice() : categories.slice();
+        catsBox.style.display = restrictCats ? 'grid' : 'none';
+        catsBox.innerHTML = categories.map(function(c) {
+            var chk = draftSelectedCats.indexOf(c) !== -1 ? ' checked' : '';
+            return '<label class="perm-chk"><input type="checkbox" class="usr-cat-item" value="' + escHtml(c) + '"' + chk + '> ' + escHtml(c) + '</label>';
+        }).join('');
+
+        var restrictProds = Array.isArray(allowedProds);
+        prodsAllChk.checked = !restrictProds;
+        draftSelectedProds = restrictProds ? allowedProds.map(Number) : products.map(function(p) { return Number(p.id); });
+        prodsWrap.style.display = restrictProds ? 'block' : 'none';
+        renderUserProductsCheckboxList();
+    }
+
+    function renderUserProductsCheckboxList() {
+        var prodsBox = document.getElementById('usr-prods-box');
+        if (!prodsBox) return;
+        var q = (document.getElementById('usr-prods-filter').value || '').toLowerCase().trim();
+        var filtered = products.filter(function(p) {
+            return !q || p.name.toLowerCase().indexOf(q) !== -1 || (p.category || '').toLowerCase().indexOf(q) !== -1;
+        });
+        if (!filtered.length) {
+            prodsBox.innerHTML = '<div style="font-size:0.75rem;color:#64748b;padding:6px;">No hay artículos que coincidan</div>';
+            return;
+        }
+        prodsBox.innerHTML = filtered.map(function(p) {
+            var pid = Number(p.id);
+            var chk = draftSelectedProds.indexOf(pid) !== -1 ? ' checked' : '';
+            return '<label class="perm-chk" style="justify-content:space-between;background:#fff;padding:4px 7px;border-radius:6px;border:1px solid var(--border);">' +
+                '<span style="display:flex;align-items:center;gap:6px;min-width:0;"><input type="checkbox" class="usr-prod-item" value="' + pid + '"' + chk + '> <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(p.name) + '</span></span>' +
+                '<span style="font-size:0.68rem;color:#64748b;flex-shrink:0;">' + escHtml(p.category) + '</span>' +
+            '</label>';
+        }).join('');
+    }
+
+    function readUserAllowedCategories() {
+        var catsAllChk = document.getElementById('usr-cats-all');
+        if (!catsAllChk || catsAllChk.checked) return null;
+        return draftSelectedCats.slice();
+    }
+
+    function readUserAllowedProducts() {
+        var prodsAllChk = document.getElementById('usr-prods-all');
+        if (!prodsAllChk || prodsAllChk.checked) return null;
+        return draftSelectedProds.map(Number);
+    }
+
+    function formatPermissionsShort(perms, u) {
         var list = Array.isArray(perms) && perms.length ? perms : ALL_MODULE_KEYS;
-        if (list.length === ALL_MODULE_KEYS.length) return 'Todos (8)';
         var mapNames = { ventas: 'Ventas', inventario: 'Inv.', productos: 'Prod.', historial: 'Hist.', caja: 'Caja', reportes: 'Rep.', conduce: 'Cond.', config: 'Conf.' };
-        return list.map(function(k) { return mapNames[k] || k; }).join(', ');
+        var modTxt = (list.length === ALL_MODULE_KEYS.length) ? 'Todos (8)' : list.map(function(k) { return mapNames[k] || k; }).join(', ');
+        var extras = [];
+        if (u && Array.isArray(u.allowedCategories)) extras.push(u.allowedCategories.length + ' cat.');
+        if (u && Array.isArray(u.allowedProducts)) extras.push(u.allowedProducts.length + ' art.');
+        return modTxt + (extras.length ? (' • ' + extras.join(', ')) : '');
     }
 
     function renderConfigView() {
@@ -5235,6 +5343,8 @@
         document.getElementById('cfg-cloud-url').value = cloudCfg.url || '';
         document.getElementById('cfg-cloud-bizid').value = cloudCfg.bizId || 'el-wey-pica-pollo';
 
+        renderUserAccessSelectors(null, null);
+
         var uTb = document.getElementById('users-tbody');
         uTb.innerHTML = usersList.map(function(u) {
             var pLbl = getPriceTierLabel(u.priceTier);
@@ -5243,7 +5353,7 @@
                 '<td style="font-weight:900;">' + escHtml(u.name) + ' <span style="color:#64748b;font-weight:700;">(@' + escHtml(u.username) + ')</span></td>' +
                 '<td>' + escHtml(u.role) + ' • ' + escHtml(whLbl) + '</td>' +
                 '<td><button type="button" class="tab-btn" style="height:30px;padding:0 8px;" data-action="cycle-user-price" data-id="' + u.id + '">🏷️ ' + escHtml(pLbl) + ' ⇄</button></td>' +
-                '<td style="font-size:0.74rem;font-weight:800;color:#334155;">' + escHtml(formatPermissionsShort(u.permissions)) + '</td>' +
+                '<td style="font-size:0.74rem;font-weight:800;color:#334155;">' + escHtml(formatPermissionsShort(u.permissions, u)) + '</td>' +
                 '<td style="text-align:center;white-space:nowrap;">' +
                     '<button type="button" class="tab-btn" style="height:28px;padding:0 8px;" data-action="edit-user" data-id="' + u.id + '" title="Editar Usuario y Permisos">✏️</button> ' +
                     (u.username !== 'admin' ? '<button type="button" class="btn-cancel" style="height:28px;padding:0 8px;" data-action="del-user" data-id="' + u.id + '">✕</button>' : '🔒') +
@@ -5783,6 +5893,13 @@
                         products[pi].category = newName;
                     }
                 }
+                for (var ui = 0; ui < usersList.length; ui++) {
+                    if (Array.isArray(usersList[ui].allowedCategories)) {
+                        var cIdx = usersList[ui].allowedCategories.indexOf(oldName);
+                        if (cIdx !== -1) usersList[ui].allowedCategories[cIdx] = newName;
+                    }
+                }
+                saveData('ew_users_v4', usersList);
                 if (activeCatFilter === oldName) {
                     activeCatFilter = newName;
                 }
@@ -5818,6 +5935,12 @@
                 saveData('ew_biz_v2', bizSettings);
                 updateTopbarUI();
                 toast('✓ Datos del negocio guardados');
+            } else if (act === 'usr-prods-check-all') {
+                draftSelectedProds = products.map(function(p) { return Number(p.id); });
+                renderUserProductsCheckboxList();
+            } else if (act === 'usr-prods-uncheck-all') {
+                draftSelectedProds = [];
+                renderUserProductsCheckboxList();
             } else if (act === 'edit-user') {
                 var euObj = usersList.find(function(x) { return x.id === Number(el.getAttribute('data-id')); });
                 if (euObj) {
@@ -5828,6 +5951,7 @@
                     document.getElementById('usr-wh').value = euObj.whAccess || 'both';
                     document.getElementById('usr-price-tier').value = String(euObj.priceTier || 1);
                     setUserPermissionsCheckboxes(euObj.permissions);
+                    renderUserAccessSelectors(euObj.allowedCategories, euObj.allowedProducts);
                     toast('✏️ Editando usuario: ' + euObj.name);
                 }
             } else if (act === 'add-user') {
@@ -5838,6 +5962,8 @@
                 var existU = usersList.find(function(x) { return x.username === uUser; });
                 var uPerms = readUserPermissionsCheckboxes();
                 if (uUser === 'admin' && uPerms.indexOf('config') === -1) uPerms.push('config');
+                var uAllowedCats = readUserAllowedCategories();
+                var uAllowedProds = readUserAllowedProducts();
                 var uData = {
                     id: existU ? existU.id : Date.now(),
                     name: uName,
@@ -5846,7 +5972,9 @@
                     role: document.getElementById('usr-role').value,
                     whAccess: document.getElementById('usr-wh').value,
                     priceTier: Number(document.getElementById('usr-price-tier').value || 1),
-                    permissions: uPerms
+                    permissions: uPerms,
+                    allowedCategories: uAllowedCats,
+                    allowedProducts: uAllowedProds
                 };
                 if (existU) Object.assign(existU, uData);
                 else usersList.push(uData);
@@ -5854,10 +5982,11 @@
                 if (currentUser && currentUser.username === uUser) {
                     currentUser = uData;
                     applyUserNavPermissions();
+                    renderCatalog();
                 }
                 renderConfigView();
                 renderLoginUsers();
-                toast('✓ Usuario guardado con permisos seleccionados');
+                toast('✓ Usuario guardado con categorías y artículos asignados');
             } else if (act === 'cycle-user-price') {
                 var uObj = usersList.find(function(x) { return x.id === Number(el.getAttribute('data-id')); });
                 if (uObj) {
@@ -5941,7 +6070,7 @@
         if (e.key === 'Enter') {
             var code = (this.value || '').trim();
             if (!code) return;
-            var found = products.find(function(p) { return p.barcode === code; });
+            var found = products.find(function(p) { return p.barcode === code && isProductVisibleForUser(p, getActiveCashier()); });
             if (found) {
                 addProductToCart(found.id);
                 this.value = '';
@@ -5995,7 +6124,7 @@
         if (now - globalScanLast > 120) globalScanBuf = '';
         globalScanLast = now;
         if (e.key === 'Enter' && globalScanBuf.length >= 4) {
-            var match = products.find(function(p) { return p.barcode === globalScanBuf; });
+            var match = products.find(function(p) { return p.barcode === globalScanBuf && isProductVisibleForUser(p, getActiveCashier()); });
             if (match) addProductToCart(match.id);
             globalScanBuf = '';
         } else if (e.key && e.key.length === 1) {
@@ -6060,6 +6189,44 @@
             }
         };
         reader.readAsText(file);
+    });
+
+    document.getElementById('usr-cats-all').addEventListener('change', function() {
+        var box = document.getElementById('usr-cats-box');
+        if (this.checked) {
+            box.style.display = 'none';
+        } else {
+            if (!draftSelectedCats.length) draftSelectedCats = categories.slice();
+            box.style.display = 'grid';
+            box.innerHTML = categories.map(function(c) {
+                var chk = draftSelectedCats.indexOf(c) !== -1 ? ' checked' : '';
+                return '<label class="perm-chk"><input type="checkbox" class="usr-cat-item" value="' + escHtml(c) + '"' + chk + '> ' + escHtml(c) + '</label>';
+            }).join('');
+        }
+    });
+    document.getElementById('usr-prods-all').addEventListener('change', function() {
+        var wrap = document.getElementById('usr-prods-wrap');
+        if (this.checked) {
+            wrap.style.display = 'none';
+        } else {
+            if (!draftSelectedProds.length) draftSelectedProds = products.map(function(p) { return Number(p.id); });
+            wrap.style.display = 'block';
+            renderUserProductsCheckboxList();
+        }
+    });
+    document.getElementById('usr-prods-filter').addEventListener('input', renderUserProductsCheckboxList);
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('usr-cat-item')) {
+            var val = e.target.value;
+            var idx = draftSelectedCats.indexOf(val);
+            if (e.target.checked && idx === -1) draftSelectedCats.push(val);
+            if (!e.target.checked && idx !== -1) draftSelectedCats.splice(idx, 1);
+        } else if (e.target && e.target.classList.contains('usr-prod-item')) {
+            var pid = Number(e.target.value);
+            var pidx = draftSelectedProds.indexOf(pid);
+            if (e.target.checked && pidx === -1) draftSelectedProds.push(pid);
+            if (!e.target.checked && pidx !== -1) draftSelectedProds.splice(pidx, 1);
+        }
     });
 
     window.addEventListener('online', function() { updateNetworkBadge(); syncCloudUp(true); });
