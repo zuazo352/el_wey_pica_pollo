@@ -2448,6 +2448,10 @@
                             <input type="text" id="cfg-footer">
                         </div>
                     </div>
+                    <label class="perm-chk" style="background:#fefce8;border:1.5px solid #fde047;border-radius:9px;padding:9px 10px;color:#854d0e;">
+                        <input type="checkbox" id="cfg-allow-zero-stock">
+                        ✅ Permitir vender productos sin stock (Stock 0 / Sin inventario)
+                    </label>
                     <button type="button" class="btn-primary-green" data-action="save-biz-settings">💾 Guardar Datos del Negocio</button>
                 </div>
 
@@ -2979,7 +2983,12 @@
                 </div>
             </div>
 
-            <label style="display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:800;margin-top:4px;cursor:pointer;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:800;margin-top:4px;cursor:pointer;color:#1d4ed8;">
+                <input type="checkbox" id="chk-p-nostock" style="width:18px;height:18px;">
+                ♾️ Producto sin control de stock (Permitir vender aunque esté en 0)
+            </label>
+
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:800;margin-top:6px;cursor:pointer;">
                 <input type="checkbox" id="chk-p-iscombo" style="width:18px;height:18px;">
                 Este artículo es un COMBO (Descuenta ingredientes al venderse)
             </label>
@@ -3431,7 +3440,8 @@
         wh2Name: 'Almacén Sucursal',
         address: 'Azua / San Pedro de Macorís, Rep. Dom.',
         phone: '809-521-0000',
-        footer: '¡Gracias por preferir El Wey Pica Pollo!'
+        footer: '¡Gracias por preferir El Wey Pica Pollo!',
+        allowZeroStock: false
     });
 
     var cloudCfg = loadData('ew_cloud_v1', {
@@ -3635,6 +3645,10 @@
             return sumCost > 0 ? sumCost : Number(prod.cost || 0);
         }
         return Number(prod.cost || 0);
+    }
+
+    function canSellWithoutStock(prod) {
+        return !!(bizSettings && bizSettings.allowZeroStock) || !!(prod && prod.noStock);
     }
 
     function getProdStock(prod, wh) {
@@ -3904,9 +3918,11 @@
 
         grid.innerHTML = pageItems.map(function(p) {
             var st = getProdStock(p, activeWh);
+            var freeStock = canSellWithoutStock(p);
             var uPrice = getUnitPrice(p);
-            var stClass = st <= 0 ? ' zero' : (st <= Number(p.minStock || 5) ? ' low' : '');
-            var cardOut = st <= 0 ? ' out-stock' : '';
+            var stClass = freeStock ? '' : (st <= 0 ? ' zero' : (st <= Number(p.minStock || 5) ? ' low' : ''));
+            var cardOut = (!freeStock && st <= 0) ? ' out-stock' : '';
+            var stockBadgeTxt = p.noStock ? 'Sin Inv.' : ('Disp: ' + fmtQty(st));
             var unitClass = p.isCombo ? ' combo' : (p.unit === 'Lb.' ? ' lb' : '');
             var unitText = p.isCombo ? 'COMBO' : (p.unit === 'Lb.' ? 'POR LIBRA' : 'UD.');
             var altLabel = activePriceTier === 2 ? ('Matriz: ' + fmtMoney(p.price)) : (p.price2 > 0 ? ('Sucursal: ' + fmtMoney(p.price2)) : '');
@@ -3921,7 +3937,7 @@
                         '<span class="prod-cat-sub">' + escHtml(p.category) + '</span>' +
                         '<span class="prod-cat-badges">' +
                             '<span class="badge-unit' + unitClass + '">' + escHtml(unitText) + '</span>' +
-                            '<span class="badge-stock' + stClass + '">Disp: ' + fmtQty(st) + '</span>' +
+                            '<span class="badge-stock' + stClass + '">' + stockBadgeTxt + '</span>' +
                         '</span>' +
                     '</div>' +
                     '<div class="prod-name">' + escHtml(p.name) + '</div>' +
@@ -3953,7 +3969,7 @@
         var existing = cart.find(function(c) { return c.prodId === p.id; });
         var nextQty = Math.round(((existing ? existing.qty : 0) + qtyToAdd) * 100) / 100;
 
-        if (nextQty > avail + 0.0001) {
+        if (!canSellWithoutStock(p) && nextQty > avail + 0.0001) {
             toast('⚠️ Stock insuficiente en ' + getWhShort(activeWh) + ' (Disp: ' + fmtQty(avail) + ')');
             return;
         }
@@ -4153,7 +4169,7 @@
                         addInvLog(ing.name, 'VENTA', subQty, 'Combo: ' + p.name, nextSt, activeWh, ing.unit);
                     }
                 }
-            } else {
+            } else if (!p.noStock) {
                 var nextS = Math.max(0, getProdStock(p, activeWh) - line.qty);
                 setProdStock(p, activeWh, nextS);
                 addInvLog(p.name, 'VENTA', line.qty, 'Venta POS', nextS, activeWh, p.unit);
@@ -4406,6 +4422,7 @@
             document.getElementById('inp-p-st1').value = p.stock1 || 0;
             document.getElementById('inp-p-st2').value = p.stock2 || 0;
             document.getElementById('inp-p-min').value = p.minStock || 5;
+            document.getElementById('chk-p-nostock').checked = !!p.noStock;
             document.getElementById('chk-p-iscombo').checked = !!p.isCombo;
             draftComboItems = JSON.parse(JSON.stringify(p.comboItems || []));
             draftProductImg = p.image || '';
@@ -4423,6 +4440,7 @@
             document.getElementById('inp-p-st1').value = '0';
             document.getElementById('inp-p-st2').value = '0';
             document.getElementById('inp-p-min').value = '5';
+            document.getElementById('chk-p-nostock').checked = false;
             document.getElementById('chk-p-iscombo').checked = false;
             draftComboItems = [];
             draftProductImg = '';
@@ -4513,6 +4531,7 @@
 
         var editId = Number(document.getElementById('edit-prod-id').value || 0);
         var isCombo = document.getElementById('chk-p-iscombo').checked;
+        var noStock = document.getElementById('chk-p-nostock').checked;
         var urlTyped = (document.getElementById('inp-p-img-url').value || '').trim();
         var finalImg = urlTyped || draftProductImg || '';
 
@@ -4528,6 +4547,7 @@
             stock1: isCombo ? 0 : (parseFloat(document.getElementById('inp-p-st1').value || '0') || 0),
             stock2: isCombo ? 0 : (parseFloat(document.getElementById('inp-p-st2').value || '0') || 0),
             minStock: parseFloat(document.getElementById('inp-p-min').value || '5') || 5,
+            noStock: noStock,
             isCombo: isCombo,
             comboItems: isCombo ? JSON.parse(JSON.stringify(draftComboItems)) : [],
             image: finalImg
@@ -5623,6 +5643,8 @@
         document.getElementById('cfg-address').value = bizSettings.address || '';
         document.getElementById('cfg-phone').value = bizSettings.phone || '';
         document.getElementById('cfg-footer').value = bizSettings.footer || '';
+        var zeroChk = document.getElementById('cfg-allow-zero-stock');
+        if (zeroChk) zeroChk.checked = !!bizSettings.allowZeroStock;
 
         document.getElementById('cfg-cloud-provider').value = cloudCfg.provider || 'firebase-sdk';
         document.getElementById('cfg-cloud-url').value = cloudCfg.url || '';
@@ -6247,8 +6269,11 @@
                 bizSettings.address = (document.getElementById('cfg-address').value || '').trim();
                 bizSettings.phone = (document.getElementById('cfg-phone').value || '').trim();
                 bizSettings.footer = (document.getElementById('cfg-footer').value || '').trim();
+                var zeroChkEl = document.getElementById('cfg-allow-zero-stock');
+                bizSettings.allowZeroStock = zeroChkEl ? !!zeroChkEl.checked : false;
                 saveData('ew_biz_v2', bizSettings);
                 updateTopbarUI();
+                renderCatalog();
                 toast('✓ Datos del negocio guardados');
             } else if (act === 'usr-prods-check-all') {
                 draftSelectedProds = products.map(function(p) { return Number(p.id); });
@@ -6680,7 +6705,6 @@
 
     function isUniversalTextInput(el) {
         if (!el || el.tagName !== 'INPUT') return false;
-        if (el.id === 'inp-p-img-url') return false;
         if (el.type === 'number' || el.type === 'password' || el.type === 'date' || el.type === 'hidden') return false;
         if (el.hasAttribute('data-numpad')) return false;
         // Solo aplica en inputs de texto general (nombres, descripciones, teléfonos, etc.)
