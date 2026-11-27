@@ -4158,15 +4158,15 @@
             var line = cart[i];
             var p = products.find(function(x) { return x.id === line.prodId; });
             if (!p) continue;
-            if (p.isCombo && Array.isArray(p.comboItems)) {
+            if ((p.isCombo || (Array.isArray(p.comboItems) && p.comboItems.length > 0)) && Array.isArray(p.comboItems) && p.comboItems.length > 0) {
                 for (var k = 0; k < p.comboItems.length; k++) {
                     var ci = p.comboItems[k];
                     var ing = products.find(function(x) { return x.id === ci.prodId; });
-                    if (ing) {
+                    if (ing && !ing.noStock) {
                         var subQty = Math.round(ci.qty * line.qty * 100) / 100;
                         var nextSt = Math.max(0, getProdStock(ing, activeWh) - subQty);
                         setProdStock(ing, activeWh, nextSt);
-                        addInvLog(ing.name, 'VENTA', subQty, 'Combo: ' + p.name, nextSt, activeWh, ing.unit);
+                        addInvLog(ing.name, 'VENTA', subQty, 'Combo/Receta: ' + p.name, nextSt, activeWh, ing.unit);
                     }
                 }
             } else if (!p.noStock) {
@@ -4495,7 +4495,8 @@
 
     function toggleComboBuilderUI() {
         var isC = document.getElementById('chk-p-iscombo').checked;
-        document.getElementById('combo-builder-box').style.display = isC ? 'block' : 'none';
+        var isNoSt = document.getElementById('chk-p-nostock').checked;
+        document.getElementById('combo-builder-box').style.display = (isC || isNoSt) ? 'block' : 'none';
     }
 
     function renderDraftComboList() {
@@ -4532,6 +4533,7 @@
         var editId = Number(document.getElementById('edit-prod-id').value || 0);
         var isCombo = document.getElementById('chk-p-iscombo').checked;
         var noStock = document.getElementById('chk-p-nostock').checked;
+        var hasIngredients = (isCombo || noStock) && draftComboItems.length > 0;
         var urlTyped = (document.getElementById('inp-p-img-url').value || '').trim();
         var finalImg = urlTyped || draftProductImg || '';
 
@@ -4544,12 +4546,12 @@
             cost: parseFloat(document.getElementById('inp-p-cost').value || '0') || 0,
             price: price,
             price2: parseFloat(document.getElementById('inp-p-price2').value || '0') || 0,
-            stock1: isCombo ? 0 : (parseFloat(document.getElementById('inp-p-st1').value || '0') || 0),
-            stock2: isCombo ? 0 : (parseFloat(document.getElementById('inp-p-st2').value || '0') || 0),
+            stock1: (isCombo || noStock) ? 0 : (parseFloat(document.getElementById('inp-p-st1').value || '0') || 0),
+            stock2: (isCombo || noStock) ? 0 : (parseFloat(document.getElementById('inp-p-st2').value || '0') || 0),
             minStock: parseFloat(document.getElementById('inp-p-min').value || '5') || 5,
             noStock: noStock,
-            isCombo: isCombo,
-            comboItems: isCombo ? JSON.parse(JSON.stringify(draftComboItems)) : [],
+            isCombo: isCombo || hasIngredients,
+            comboItems: (isCombo || hasIngredients) ? JSON.parse(JSON.stringify(draftComboItems)) : [],
             image: finalImg
         };
 
@@ -4637,17 +4639,17 @@
             var p = products.find(function(x) { return x.id === line.prodId; });
             if (!p) continue;
             var factor = shouldVoid ? 1 : -1;
-            if (p.isCombo && Array.isArray(p.comboItems)) {
+            if ((p.isCombo || (Array.isArray(p.comboItems) && p.comboItems.length > 0)) && Array.isArray(p.comboItems) && p.comboItems.length > 0) {
                 for (var k = 0; k < p.comboItems.length; k++) {
                     var ci = p.comboItems[k];
                     var ing = products.find(function(x) { return x.id === ci.prodId; });
-                    if (ing) {
+                    if (ing && !ing.noStock) {
                         var delta = Math.round(ci.qty * line.qty * 100) / 100;
                         var nextS = Math.max(0, getProdStock(ing, s.wh) + (delta * factor));
                         setProdStock(ing, s.wh, nextS);
                     }
                 }
-            } else {
+            } else if (!p.noStock) {
                 var nextSt = Math.max(0, getProdStock(p, s.wh) + (line.qty * factor));
                 setProdStock(p, s.wh, nextSt);
             }
@@ -6840,6 +6842,7 @@
     document.getElementById('hist-method-filter').addEventListener('change', renderHistoryTable);
     document.getElementById('hist-search').addEventListener('input', renderHistoryTable);
     document.getElementById('chk-p-iscombo').addEventListener('change', toggleComboBuilderUI);
+    document.getElementById('chk-p-nostock').addEventListener('change', toggleComboBuilderUI);
     document.getElementById('inp-cz-counted').addEventListener('input', function() {
         var exp = getExpectedDrawerAmount();
         var cnt = parseFloat(this.value || '0') || 0;
