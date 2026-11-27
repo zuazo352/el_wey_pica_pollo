@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#b91c1c">
-    <title>POS Táctil Visual - EL WEY PICA POLLO</title>
+    <title>POS Táctil Visual Offline-First - EL WEY PICA POLLO</title>
     <style>
         :root {
             --bg: #cbd5e1;
@@ -14,6 +14,7 @@
             --accent: #f59e0b;
             --success: #15803d;
             --info: #1d4ed8;
+            --purple: #6d28d9;
             --text: #0f172a;
             --muted: #475569;
             --border: #cbd5e1;
@@ -35,378 +36,267 @@
             width: 100%;
             min-height: 100%;
             background-color: #cbd5e1;
+            background-image:
+                radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.44) 0%, rgba(203, 213, 225, 0.15) 45%, rgba(148, 163, 184, 0.36) 100%),
+                repeating-linear-gradient(45deg, rgba(15, 23, 42, 0.032) 0px, rgba(15, 23, 42, 0.032) 1px, transparent 1px, transparent 10px),
+                repeating-linear-gradient(-45deg, rgba(15, 23, 42, 0.032) 0px, rgba(15, 23, 42, 0.032) 1px, transparent 1px, transparent 10px);
+            background-attachment: fixed;
             color: var(--text);
             overflow-x: hidden;
         }
 
-        button {
-            cursor: pointer;
-            transition: transform 0.08s ease;
-        }
+        button, input, select, textarea { font-family: inherit; }
+        button { cursor: pointer; transition: transform 0.08s ease, background-color 0.15s ease; }
+        button:active { transform: scale(0.98); }
 
-        button:active {
-            transform: scale(0.98);
-        }
-
-        #screen-pos {
-            display: flex;
+        #screen-login {
             min-height: 100vh;
-            flex-direction: column;
-        }
-
-        .topbar {
-            background: #18181b;
-            color: #ffffff;
-            padding: 8px 14px;
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 3px solid var(--accent);
-        }
-
-        .nav-tabs {
-            display: flex;
-            gap: 6px;
-        }
-
-        .nav-btn {
-            height: 36px;
-            padding: 0 12px;
-            border-radius: 8px;
-            border: 1.5px solid #3f3f46;
-            background: #27272a;
-            color: #f4f4f5;
-            font-size: 0.8rem;
-            font-weight: 800;
-        }
-
-        .nav-btn.active {
-            background: var(--primary);
-            border-color: #fde047;
-            color: #ffffff;
-        }
-
-        .view-section {
-            display: none;
-            width: 100%;
-            flex: 1;
-        }
-
-        .view-section.active {
-            display: block;
-        }
-
-        .page-wrap {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 14px;
-        }
-
-        .page-head {
-            background: var(--card);
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius);
-            padding: 12px 16px;
-            margin-bottom: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .tab-btn {
-            height: 38px;
-            padding: 0 14px;
-            border-radius: 8px;
-            border: 1.5px solid var(--border-strong);
-            background: #f8fafc;
-            color: #1e293b;
-            font-size: 0.82rem;
-            font-weight: 800;
-        }
-
-        .tab-btn.active {
-            background: #18181b;
-            border-color: #18181b;
-            color: #fde047;
-        }
-
-        .pos-layout {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) 380px;
-            gap: 12px;
-            padding: 12px;
-            max-width: 1600px;
-            margin: 0 auto;
-        }
-
-        .menu-panel {
-            background: var(--card);
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius);
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .prod-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        .prod-card {
-            background: #ffffff;
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
-            padding: 8px;
-            text-align: left;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .prod-img-wrap {
-            width: 100%;
-            aspect-ratio: 1 / 1;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #f1f5f9;
-            margin-bottom: 6px;
-            border: 1px solid #cbd5e1;
-        }
-
-        .prod-img-wrap img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
-
-        .prod-name {
-            font-size: 0.78rem;
-            font-weight: 900;
-            color: var(--text);
-            margin-bottom: 4px;
-        }
-
-        .prod-price {
-            font-size: 0.82rem;
-            font-weight: 900;
-            color: var(--primary);
-        }
-
-        .cart-panel {
-            background: var(--card);
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius);
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .cart-items {
-            min-height: 140px;
-            max-height: 300px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-bottom: 10px;
-        }
-
-        .cart-item {
-            background: #f8fafc;
-            border: 1.5px solid var(--border);
-            border-radius: 8px;
-            padding: 6px 8px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 6px;
-        }
-
-        .ci-thumb {
-            width: 36px;
-            height: 36px;
-            border-radius: 6px;
-            object-fit: cover;
-            border: 1px solid var(--border-strong);
-        }
-
-        .modal-overlay {
-            display: none !important;
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.75);
-            z-index: 950;
             align-items: center;
             justify-content: center;
-            padding: 14px;
-        }
-
-        .modal-overlay.open {
-            display: flex !important;
-        }
-
-        .modal-box {
-            width: 100%;
-            max-width: 600px;
-            background: #ffffff;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
-        }
-
-        .modal-head {
-            background: #18181b;
-            color: #ffffff;
-            padding: 14px 18px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .modal-body {
             padding: 18px;
-            max-height: 75vh;
-            overflow-y: auto;
+            background: linear-gradient(135deg, #18181b 0%, #450a0a 52%, #991b1b 100%);
         }
 
-        .modal-foot {
-            padding: 12px 18px;
-            background: #f8fafc;
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-        }
-
-        /* ESTILOS DE LA GALERÍA INTERNA */
-        .gallery-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .gallery-thumb-item {
-            position: relative;
-            aspect-ratio: 1/1;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 2px solid var(--border);
-            cursor: pointer;
-            background: #f1f5f9;
-        }
-
-        .gallery-thumb-item:hover {
-            border-color: var(--primary);
-            transform: scale(1.03);
-        }
-
-        .gallery-thumb-item img {
+        .login-card {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
+            max-width: 430px;
+            background: var(--card);
+            border-radius: 18px;
+            padding: 24px 22px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.48);
+            border: 3px solid var(--accent);
         }
+
+        .login-logo-wrap { text-align: center; margin-bottom: 8px; }
+        .login-logo-wrap img { width: 180px; max-width: 72%; height: auto; }
+        .login-title { text-align: center; font-size: 1.2rem; font-weight: 900; margin-bottom: 16px; }
+
+        .fld { display: flex; flex-direction: column; gap: 5px; margin-bottom: 11px; }
+        .fld label { font-size: 0.74rem; font-weight: 800; color: #334155; text-transform: uppercase; }
+        .fld input, .fld select, .fld textarea {
+            width: 100%; min-height: 42px; padding: 8px 12px;
+            border: 1.5px solid var(--border-strong); border-radius: 9px;
+            font-size: 0.92rem; font-weight: 700; background: #ffffff;
+        }
+
+        .pin-trigger-input { cursor: pointer; letter-spacing: 5px; text-align: center; background: #fefce8 !important; }
+
+        .btn-login {
+            width: 100%; height: 48px; border: none; border-radius: 10px;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #ffffff; font-size: 1rem; font-weight: 900; margin-top: 6px;
+        }
+
+        .pin-pad-card {
+            width: 100%; max-width: 340px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border: 2.5px solid #eab308; border-radius: 20px; padding: 18px 16px; color: #ffffff;
+        }
+        .pin-pad-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .pin-display-box {
+            width: 100%; height: 52px; background: #020617; border: 2px solid #3b82f6; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; font-size: 1.75rem; font-weight: 900; letter-spacing: 10px; color: #ffffff; margin-bottom: 16px;
+        }
+        .pin-circle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; justify-items: center; }
+        .pin-circle-btn {
+            width: 74px; height: 74px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35);
+            background: radial-gradient(circle at 30% 30%, #3b82f6 0%, #1e3a8a 85%); color: #ffffff; font-size: 1.55rem; font-weight: 900;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .pin-circle-back { background: #64748b; font-size: 1.3rem; }
+        .pin-circle-enter { background: #22c55e; font-size: 0.92rem; flex-direction: column; }
+
+        #screen-pos { display: none; min-height: 100vh; flex-direction: column; }
+        .topbar {
+            background: #18181b; color: #ffffff; padding: 7px 12px;
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;
+            border-bottom: 3px solid var(--accent); position: sticky; top: 0; z-index: 60;
+        }
+        .brand-box { display: flex; align-items: center; gap: 8px; }
+        .brand-logo-top { width: 50px; height: auto; }
+        .brand-info h1 { font-size: 0.94rem; font-weight: 900; color: #fde047; }
+        .brand-badges { display: flex; gap: 4px; margin-top: 3px; }
+        .pill-badge { padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 800; background: #27272a; color: #f4f4f5; }
+
+        .nav-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+        .nav-btn {
+            height: 35px; padding: 0 9px; border-radius: 8px; border: 1.5px solid #3f3f46;
+            background: #27272a; color: #f4f4f5; font-size: 0.76rem; font-weight: 800;
+        }
+        .nav-btn.active { background: var(--primary); border-color: #fde047; color: #ffffff; }
+
+        .view-section { display: none; width: 100%; flex: 1; }
+        .view-section.active { display: block; }
+        .page-wrap { max-width: 1460px; margin: 0 auto; padding: 12px; }
+        .page-head {
+            background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius);
+            padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .tab-btn {
+            height: 35px; padding: 0 11px; border-radius: 8px; border: 1.5px solid var(--border-strong);
+            background: #f8fafc; color: #1e293b; font-size: 0.77rem; font-weight: 800;
+        }
+        .tab-btn.active { background: #18181b; color: #fde047; }
+
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px; }
+        .stat-card { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+        .stat-lbl { font-size: 0.72rem; font-weight: 800; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+        .stat-val { font-size: 1.25rem; font-weight: 900; }
+
+        .card-table { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
+        .tbl { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .tbl th { background: #18181b; color: #fde047; text-align: left; padding: 10px 11px; font-size: 0.72rem; font-weight: 900; }
+        .tbl td { padding: 9px 11px; border-bottom: 1px solid var(--border); }
+
+        .pos-layout {
+            display: grid; grid-template-columns: minmax(0, 1fr) clamp(295px, 31vw, 410px);
+            gap: 10px; padding: 10px; max-width: 1660px; margin: 0 auto;
+        }
+        @media (max-width: 820px) { .pos-layout { grid-template-columns: 1fr; } }
+
+        .menu-panel { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 10px; }
+        .search-bar-row { display: flex; gap: 6px; margin-bottom: 8px; }
+        .inp-search { flex: 1; height: 39px; padding: 0 10px; border: 1.5px solid var(--border-strong); border-radius: 9px; font-size: 0.86rem; background: #f8fafc; }
+        
+        .cat-bar { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 7px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
+        .cat-chip { height: 34px; padding: 0 12px; border-radius: 999px; border: 1.5px solid var(--border-strong); background: #f8fafc; color: #334155; font-size: 0.77rem; font-weight: 800; white-space: nowrap; }
+        .cat-chip.active { background: var(--primary); border-color: var(--primary); color: #ffffff; }
+
+        .prod-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+        @media (max-width: 580px) { .prod-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+        .prod-card {
+            background: #ffffff; border: 1.5px solid var(--border); border-radius: 10px; padding: 6px;
+            text-align: left; display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .prod-img-wrap {
+            width: 100%; aspect-ratio: 1 / 1; border-radius: 8px; overflow: hidden; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 5px;
+        }
+        .prod-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+        .prod-name { font-size: 0.74rem; font-weight: 900; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .prod-price { font-size: 0.79rem; font-weight: 900; color: var(--primary); }
+
+        .cart-panel { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 10px; position: sticky; top: 62px; }
+        .cart-head { display: flex; justify-content: space-between; padding-bottom: 6px; border-bottom: 2px solid #f1f5f9; margin-bottom: 7px; }
+        .cart-items { min-height: 105px; max-height: 235px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+        .cart-item { background: #f8fafc; border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 7px; display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+        .ci-thumb { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; }
+        
+        .qty-btn { width: 26px; height: 26px; border-radius: 6px; border: 1.5px solid var(--border-strong); background: #ffffff; font-weight: 900; }
+        .cart-summary { background: #f8fafc; border: 1.5px solid var(--border); border-radius: 9px; padding: 8px 10px; margin-bottom: 8px; }
+        .sum-total { display: flex; justify-content: space-between; align-items: center; font-size: 1.12rem; font-weight: 900; border-top: 1.5px dashed var(--border-strong); padding-top: 5px; }
+
+        .cart-actions { display: grid; grid-template-columns: 0.9fr 2.1fr; gap: 6px; }
+        .btn-cancel { height: 44px; border-radius: 9px; border: 1.5px solid #fecaca; background: #fef2f2; color: var(--primary); font-weight: 900; }
+        .btn-cobrar { height: 44px; border-radius: 9px; border: none; background: var(--success); color: #ffffff; font-weight: 900; }
+
+        .modal-overlay { display: none !important; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.72); z-index: 950; align-items: center; justify-content: center; padding: 14px; }
+        .modal-overlay.open { display: flex !important; }
+        .modal-box { width: 100%; max-width: 540px; background: #ffffff; border-radius: 16px; overflow: hidden; }
+        .modal-head { background: #18181b; color: #ffffff; padding: 13px 16px; display: flex; justify-content: space-between; }
+        .modal-body { padding: 16px; max-height: 78vh; overflow-y: auto; }
+        .modal-foot { padding: 12px 16px; background: #f8fafc; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
 
         #toast-msg {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%) translateY(20px);
-            background: #18181b;
-            color: #fde047;
-            border: 1.5px solid var(--accent);
-            padding: 10px 18px;
-            border-radius: 999px;
-            font-size: 0.84rem;
-            font-weight: 900;
-            z-index: 2000;
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.2s ease;
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: #18181b; color: #fde047; border: 1.5px solid var(--accent);
+            padding: 10px 18px; border-radius: 999px; font-weight: 900; z-index: 2000; opacity: 0; transition: all 0.2s ease;
         }
-
-        #toast-msg.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
+        #toast-msg.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     </style>
 </head>
 <body>
 
+<section id="screen-login">
+    <div class="login-card">
+        <div class="login-logo-wrap"><img id="login-brand-logo" alt="EL WEY PICA POLLO"></div>
+        <div class="login-title">SISTEMA PUNTO DE VENTA (POS)</div>
+        <div class="fld"><label>Seleccionar Usuario</label><select id="login-user-select"></select></div>
+        <div class="fld"><label>PIN de Acceso</label><input type="password" id="login-pass-input" class="pin-trigger-input" placeholder="••••" readonly data-action="open-pin-pad"></div>
+        <button type="button" class="btn-login" data-action="do-login">🔓 INGRESAR AL POS</button>
+        <div id="login-error" class="login-err" style="display:none; color:red; margin-top:8px; text-align:center; font-weight:bold;"></div>
+    </div>
+</section>
+
+<div id="modal-pin-pad" class="modal-overlay">
+    <div class="pin-pad-card">
+        <div class="pin-pad-header"><span>🔐 PIN</span><button type="button" class="modal-close" data-action="close-modal" data-modal="modal-pin-pad">✕</button></div>
+        <div id="pin-pad-display" class="pin-display-box">••••</div>
+        <div class="pin-circle-grid">
+            <button type="button" class="pin-circle-btn" data-action="pin-key" data-k="1">1</button>
+            <button type="button" class="pin-circle-btn" data-action="pin-key" data-k="2">2</button>
+            <button type="button" class="pin-circle-btn" data-action="pin-key" data-k="3">3</button>
+            <button type="button" class="pin-circle-btn" data-action="pin-key" data-k="4">4</button>
+            <button type="button" class="pin-circle-btn" data-action="pin-key" data-k="5">5</button>
+            <button type="button" class="pin-circle-btn" data-action="pin-key" data-k="6">6</button>
+            <button type="button" class="pin-circle-btn" data-action="pin-key" data-k="7">7</button>
+            <button type="button" class="pin-circle-btn" data-action="pin-key" data-k="8">8</button>
+            <button type="button" class="pin-circle-btn" data-action="pin-key" data-k="9">9</button>
+            <button type="button" class="pin-circle-btn pin-circle-back" data-action="pin-key" data-k="BACK">⌫</button>
+            <button type="button" class="pin-circle-btn" data-action="pin-key" data-k="0">0</button>
+            <button type="button" class="pin-circle-btn pin-circle-enter" data-action="pin-key" data-k="ENTER">OK</button>
+        </div>
+    </div>
+</div>
+
 <section id="screen-pos">
     <header class="topbar">
-        <div style="font-size:1rem;font-weight:900;color:#fde047;">🍗 EL WEY PICA POLLO - POS</div>
+        <div class="brand-box">
+            <img id="topbar-brand-logo" class="brand-logo-top" alt="Logo">
+            <div class="brand-info">
+                <h1 id="topbar-biz-name">EL WEY PICA POLLO</h1>
+                <div class="brand-badges"><span class="pill-badge" style="background:#14532d;color:#dcfce7;">🟢 En Línea</span></div>
+            </div>
+        </div>
         <nav class="nav-tabs">
             <button type="button" class="nav-btn active" data-action="nav" data-view="ventas">🛒 Ventas</button>
-            <button type="button" class="nav-btn" data-action="nav" data-view="productos">📦 Productos & Galería</button>
+            <button type="button" class="nav-btn" data-action="nav" data-view="inventario">📊 Inventario</button>
+            <button type="button" class="nav-btn" data-action="nav" data-view="productos">📦 Productos</button>
+            <button type="button" class="nav-btn" data-action="nav" data-view="historial">📜 Historial</button>
+            <button type="button" class="nav-btn" data-action="nav" data-view="caja">💰 Caja Z</button>
+            <button type="button" class="nav-btn" data-action="nav" data-view="config">⚙️ Config</button>
+            <button type="button" class="nav-btn" style="background:#7c2d12;" data-action="logout">🚪 Salir</button>
         </nav>
     </header>
 
-    <!-- VISTA VENTAS -->
     <div id="view-ventas" class="view-section active">
         <div class="pos-layout">
             <div class="menu-panel">
+                <div class="search-bar-row">
+                    <input type="text" id="inp-menu-search" class="inp-search" placeholder="🔍 Buscar producto...">
+                </div>
+                <div id="cat-bar" class="cat-bar"></div>
                 <div id="prod-grid" class="prod-grid"></div>
             </div>
             <aside class="cart-panel">
-                <h3 style="font-size:0.9rem;font-weight:900;margin-bottom:8px;">🧾 Ticket Actual</h3>
+                <div class="cart-head"><h3 style="font-size:0.88rem;font-weight:900;">🧾 Ticket Actual</h3><span id="cart-count-badge" style="background:#18181b;color:#fde047;padding:3px 8px;border-radius:999px;font-size:0.72rem;">0 ítems</span></div>
                 <div id="cart-items" class="cart-items"></div>
-                <div style="border-top:2px solid #e2e8f0;padding-top:8px;display:flex;justify-content:space-between;font-weight:900;font-size:1.1rem;margin-bottom:10px;">
-                    <span>TOTAL:</span><span id="sum-total" style="color:var(--success);">RD$ 0.00</span>
+                <div class="cart-summary"><div class="sum-total"><span>TOTAL:</span><span id="sum-total" style="color:var(--success);">RD$ 0.00</span></div></div>
+                <div class="cart-actions">
+                    <button type="button" class="btn-cancel" data-action="clear-cart">🗑️ Limpiar</button>
+                    <button type="button" class="btn-cobrar" data-action="open-checkout">💵 COBRAR</button>
                 </div>
-                <button type="button" class="tab-btn" style="background:var(--success);color:#fff;width:100%;height:44px;" data-action="clear-cart">🗑️ Limpiar Carrito</button>
             </aside>
         </div>
     </div>
 
-    <!-- VISTA PRODUCTOS Y GESTOR DE GALERÍA -->
-    <div id="view-productos" class="view-section">
-        <div class="page-wrap">
-            <div class="page-head">
-                <h2>📦 Catálogo de Productos y Galería de Imágenes</h2>
-                <button type="button" class="tab-btn" style="background:#18181b;color:#fde047;" data-action="open-gallery-modal">🖼️ Abrir Galería de Imágenes</button>
-            </div>
-            <div class="card-table">
-                <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
-                    <thead>
-                        <tr style="background:#18181b;color:#fde047;">
-                            <th style="padding:10px;text-align:left;">IMG</th>
-                            <th style="padding:10px;text-align:left;">PRODUCTO</th>
-                            <th style="padding:10px;text-align:left;">PRECIO</th>
-                            <th style="padding:10px;text-align:center;">ACCIÓN</th>
-                        </tr>
-                    </thead>
-                    <tbody id="prods-table-body"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <div id="view-inventario" class="view-section"><div class="page-wrap"><div class="page-head"><h2>📊 Inventario</h2></div><div class="card-table"><table class="tbl"><thead><tr><th>Producto</th><th>Stock</th></tr></thead><tbody id="inv-tbody"></tbody></table></div></div></div>
+    <div id="view-productos" class="view-section"><div class="page-wrap"><div class="page-head"><h2>📦 Productos</h2></div><div class="card-table"><table class="tbl"><thead><tr><th>Img</th><th>Nombre</th><th>Precio</th></tr></thead><tbody id="prods-tbody"></tbody></table></div></div></div>
+    <div id="view-historial" class="view-section"><div class="page-wrap"><div class="page-head"><h2>📜 Historial de Ventas</h2></div><div class="card-table"><table class="tbl"><thead><tr><th>Ticket</th><th>Total</th><th>Método</th></tr></thead><tbody id="hist-tbody"></tbody></table></div></div></div>
+    <div id="view-caja" class="view-section"><div class="page-wrap"><div class="page-head"><h2>💰 Caja Z / Arqueo</h2></div><div class="stat-grid"><div class="stat-card"><div class="stat-lbl">Ventas Efectivo</div><div id="z-cash" class="stat-val">RD$ 0.00</div></div></div></div></div>
+    <div id="view-config" class="view-section"><div class="page-wrap"><div class="page-head"><h2>⚙️ Configuración del Negocio</h2></div></div></div>
 </section>
 
-<!-- MODAL SELECCIONAR / SUBIR IMAGEN DESDE LA GALERÍA -->
-<div id="modal-image-gallery" class="modal-overlay">
+<div id="modal-checkout" class="modal-overlay">
     <div class="modal-box">
-        <div class="modal-head">
-            <h3>🖼️ Galería de Imágenes del Negocio</h3>
-            <button type="button" class="modal-close" data-action="close-modal" data-modal="modal-image-gallery" style="background:#27272a;color:#fff;border:none;width:30px;height:30px;border-radius:6px;">✕</button>
-        </div>
+        <div class="modal-head"><h3>💵 Cobrar Orden</h3><button type="button" class="modal-close" data-action="close-modal" data-modal="modal-checkout">✕</button></div>
         <div class="modal-body">
-            <div style="margin-bottom:12px;background:#f8fafc;padding:12px;border-radius:10px;border:1.5px dashed var(--border-strong);text-align:center;">
-                <label class="tab-btn" style="background:var(--primary);color:#fff;cursor:pointer;display:inline-block;height:42px;line-height:42px;padding:0 18px;">
-                    📁 Subir Nueva Foto a la Galería
-                    <input type="file" id="inp-upload-gallery-file" accept="image/*" style="display:none;">
-                </label>
-                <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">Se optimizará automáticamente para el POS</div>
-            </div>
-            <div style="font-size:0.82rem;font-weight:900;color:var(--text);margin-bottom:6px;">Selecciona una imagen para el producto:</div>
-            <div id="gallery-thumbs-container" class="gallery-grid"></div>
+            <div style="font-size:1.3rem;font-weight:900;color:var(--success);text-align:center;margin-bottom:12px;" id="chk-base-total">RD$ 0.00</div>
+            <div class="fld"><label>Efectivo Recibido (RD$)</label><input type="number" id="inp-cash" placeholder="0.00" style="font-size:1.15rem;"></div>
         </div>
         <div class="modal-foot">
-            <button type="button" class="tab-btn" data-action="close-modal" data-modal="modal-image-gallery">Cerrar</button>
+            <button type="button" class="tab-btn" data-action="close-modal" data-modal="modal-checkout">Cancelar</button>
+            <button type="button" class="btn-cobrar" style="padding:0 20px;" data-action="confirm-sale">✓ Finalizar Venta</button>
         </div>
     </div>
 </div>
@@ -417,92 +307,121 @@
 (function() {
     'use strict';
 
-    // Galería interna guardada en localStorage
-    var savedGallery = JSON.parse(localStorage.getItem('ew_image_gallery') || 'null');
-    if (!savedGallery) {
-        savedGallery = [
-            'https://zuazo352.github.io/el_wey_pica_pollo/Fotos/IMG_4388_recortado.jpg',
-            'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=300&auto=format&fit=crop&q=80',
-            'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=300&auto=format&fit=crop&q=80',
-            'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=300&auto=format&fit=crop&q=80',
-            'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=300&auto=format&fit=crop&q=80'
-        ];
+    var SVG_LOGO = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#b91c1c"/><text x="50" y="58" font-size="40" fill="#fff" text-anchor="middle">WEY</text></svg>');
+    
+    function applyLogo() {
+        ['login-brand-logo', 'topbar-brand-logo'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.src = SVG_LOGO;
+        });
     }
 
-    var products = JSON.parse(localStorage.getItem('ew_products_gallery_v1') || 'null');
-    if (!products) {
-        products = [
-            { id: 201, name: 'Extra $25', category: 'Extras', price: 25, image: savedGallery[0] },
-            { id: 202, name: 'Extra Papas', category: 'Extras', price: 75, image: savedGallery[1] },
-            { id: 203, name: 'Arroz Pescado', category: 'Platos del Día', price: 180, image: savedGallery[2] },
-            { id: 204, name: 'Plato día 2 Pza Pollo Frito', category: 'Platos del Día', price: 200, image: savedGallery[3] },
-            { id: 205, name: 'Plato día 1 Pza Pollo Frito', category: 'Platos del Día', price: 140, image: savedGallery[3] },
-            { id: 206, name: '1 Pollo Horneado', category: 'Pollo Horneado', price: 550, image: savedGallery[4] },
-            { id: 207, name: '3/4 Pollo Horneado', category: 'Pollo Horneado', price: 420, image: savedGallery[4] },
-            { id: 208, name: '1/2 Pollo Horneado', category: 'Pollo Horneado', price: 280, image: savedGallery[4] },
-            { id: 209, name: '1/4 Pollo Horneado', category: 'Pollo Horneado', price: 150, image: savedGallery[4] }
-        ];
-    }
+    var usersList = [{ id: 1, name: 'Administrador', username: 'admin', pass: '1234', role: 'Administrador' }];
+    var categories = ['Platos del Día', 'Pollo Horneado', 'Extras'];
 
+    // TUS 9 PRODUCTOS ORGANIZADOS EXACTAMENTE CON SUS FOTOS FIJAS:
+    var products = [
+        { id: 201, name: 'Extra $25', category: 'Extras', price: 25, stock: 999, image: 'https://zuazo352.github.io/el_wey_pica_pollo/Fotos/IMG_4388_recortado.jpg' },
+        { id: 202, name: 'Extra Papas', category: 'Extras', price: 75, stock: 100, image: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=300&auto=format&fit=crop&q=80' },
+        { id: 203, name: 'Arroz Pescado', category: 'Platos del Día', price: 180, stock: 80, image: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=300&auto=format&fit=crop&q=80' },
+        { id: 204, name: 'Plato día 2 Pza Pollo Frito', category: 'Platos del Día', price: 200, stock: 120, image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=300&auto=format&fit=crop&q=80' },
+        { id: 205, name: 'Plato día 1 Pza Pollo Frito', category: 'Platos del Día', price: 140, stock: 120, image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=300&auto=format&fit=crop&q=80' },
+        { id: 206, name: '1 Pollo Horneado', category: 'Pollo Horneado', price: 550, stock: 40, image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=300&auto=format&fit=crop&q=80' },
+        { id: 207, name: '3/4 Pollo Horneado', category: 'Pollo Horneado', price: 420, stock: 40, image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=300&auto=format&fit=crop&q=80' },
+        { id: 208, name: '1/2 Pollo Horneado', category: 'Pollo Horneado', price: 280, stock: 40, image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=300&auto=format&fit=crop&q=80' },
+        { id: 209, name: '1/4 Pollo Horneado', category: 'Pollo Horneado', price: 150, stock: 40, image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=300&auto=format&fit=crop&q=80' }
+    ];
+
+    var salesHistory = JSON.parse(localStorage.getItem('ew_sales_v1') || '[]');
+    var currentUser = null;
+    var activeCatFilter = 'Todas';
     var cart = [];
-    var editingProductId = null;
+    var pinBuffer = '';
 
     function toast(msg) {
         var el = document.getElementById('toast-msg');
         if (!el) return;
-        el.textContent = msg;
-        el.classList.add('show');
+        el.textContent = msg; el.classList.add('show');
         setTimeout(function() { el.classList.remove('show'); }, 2500);
     }
+    function escHtml(str) { return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function fmtMoney(n) { return 'RD$ ' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function openMod(id) { document.getElementById(id).classList.add('open'); }
+    function closeMod(id) { document.getElementById(id).classList.remove('open'); }
 
-    function escHtml(str) {
-        return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    function renderLoginUsers() {
+        var sel = document.getElementById('login-user-select');
+        if (sel) sel.innerHTML = usersList.map(function(u) { return '<option value="' + u.username + '">' + u.name + '</option>'; }).join('');
     }
 
-    function fmtMoney(n) {
-        return 'RD$ ' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function updatePinDisplay() {
+        var disp = document.getElementById('pin-pad-display');
+        if (disp) disp.textContent = pinBuffer.length ? '•'.repeat(pinBuffer.length) : '••••';
+    }
+
+    function handleLogin() {
+        var uName = document.getElementById('login-user-select').value;
+        var pass = document.getElementById('login-pass-input').value || pinBuffer;
+        var found = usersList.find(function(u) { return u.username === uName && u.pass === pass; });
+        if (!found) {
+            var err = document.getElementById('login-error');
+            err.textContent = '❌ PIN incorrecto (Prueba 1234)'; err.style.display = 'block';
+            return;
+        }
+        currentUser = found;
+        document.getElementById('screen-login').style.display = 'none';
+        document.getElementById('screen-pos').style.display = 'flex';
+        renderCatalog(); renderCart();
+        toast('👋 ¡Bienvenido!');
     }
 
     function switchView(v) {
         document.querySelectorAll('.view-section').forEach(function(el) { el.classList.remove('active'); });
         document.querySelectorAll('.nav-btn').forEach(function(el) { el.classList.remove('active'); });
-        document.getElementById('view-' + v).classList.add('active');
-        document.querySelector('[data-view="' + v + '"]').classList.add('active');
-        if (v === 'productos') renderProductsTable();
+        var target = document.getElementById('view-' + v);
+        if (target) target.classList.add('active');
+        var btn = document.querySelector('[data-view="' + v + '"]');
+        if (btn) btn.classList.add('active');
+
+        if (v === 'inventario') {
+            document.getElementById('inv-tbody').innerHTML = products.map(function(p) { return '<tr><td>' + escHtml(p.name) + '</td><td>' + p.stock + '</td></tr>'; }).join('');
+        } else if (v === 'productos') {
+            document.getElementById('prods-tbody').innerHTML = products.map(function(p) { return '<tr><td><img src="' + escHtml(p.image) + '" style="width:32px;height:32px;object-fit:cover;"></td><td>' + escHtml(p.name) + '</td><td>' + fmtMoney(p.price) + '</td></tr>'; }).join('');
+        } else if (v === 'historial') {
+            document.getElementById('hist-tbody').innerHTML = salesHistory.slice().reverse().map(function(s) { return '<tr><td>' + s.code + '</td><td>' + fmtMoney(s.total) + '</td><td>' + s.method + '</td></tr>'; }).join('') || '<tr><td colspan="3" style="text-align:center;">Sin ventas</td></tr>';
+        } else if (v === 'caja') {
+            var totCash = salesHistory.filter(function(s) { return s.method === 'Efectivo'; }).reduce(function(a, b) { return a + b.total; }, 0);
+            document.getElementById('z-cash').textContent = fmtMoney(totCash);
+        }
     }
 
     function renderCatalog() {
+        var catBar = document.getElementById('cat-bar');
+        var allCats = ['Todas'].concat(categories);
+        catBar.innerHTML = allCats.map(function(c) {
+            return '<button type="button" class="cat-chip' + (c === activeCatFilter ? ' active' : '') + '" data-action="filter-cat" data-cat="' + escHtml(c) + '">' + escHtml(c) + '</button>';
+        }).join('');
+
+        var q = (document.getElementById('inp-menu-search').value || '').toLowerCase().trim();
+        var filtered = products.filter(function(p) {
+            return (activeCatFilter === 'Todas' || p.category === activeCatFilter) && (!q || p.name.toLowerCase().indexOf(q) !== -1);
+        });
+
         var grid = document.getElementById('prod-grid');
-        grid.innerHTML = products.map(function(p) {
+        grid.innerHTML = filtered.map(function(p) {
             return '<button type="button" class="prod-card" data-action="add-prod" data-id="' + p.id + '">' +
                 '<div class="prod-img-wrap"><img src="' + escHtml(p.image) + '" alt=""></div>' +
-                '<div>' +
-                    '<div class="prod-name">' + escHtml(p.name) + '</div>' +
-                    '<div class="prod-price">' + fmtMoney(p.price) + '</div>' +
-                '</div>' +
+                '<div><div class="prod-name">' + escHtml(p.name) + '</div><div class="prod-price">' + fmtMoney(p.price) + '</div></div>' +
             '</button>';
         }).join('');
     }
 
-    function renderProductsTable() {
-        var tb = document.getElementById('prods-table-body');
-        tb.innerHTML = products.map(function(p) {
-            return '<tr style="border-bottom:1px solid #cbd5e1;">' +
-                '<td style="padding:10px;"><img src="' + escHtml(p.image) + '" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid #cbd5e1;" alt=""></td>' +
-                '<td style="padding:10px;font-weight:900;">' + escHtml(p.name) + '</td>' +
-                '<td style="padding:10px;font-weight:900;color:var(--success);">' + fmtMoney(p.price) + '</td>' +
-                '<td style="padding:10px;text-align:center;"><button type="button" class="tab-btn" data-action="select-img-for-prod" data-id="' + p.id + '">🖼️ Cambiar Foto</button></td>' +
-            '</tr>';
-        }).join('');
-    }
-
-    function renderGalleryModalThumbs() {
-        var container = document.getElementById('gallery-thumbs-container');
-        container.innerHTML = savedGallery.map(function(url, idx) {
-            return '<div class="gallery-thumb-item" data-action="pick-gallery-img" data-url="' + escHtml(url) + '">' +
-                '<img src="' + escHtml(url) + '" alt="">' +
-            '</div>';
-        }).join('');
+    function addProductToCart(id) {
+        var p = products.find(function(x) { return x.id === id; });
+        if (!p) return;
+        var ex = cart.find(function(c) { return c.prodId === p.id; });
+        if (ex) ex.qty += 1; else cart.push({ prodId: p.id, name: p.name, price: p.price, qty: 1, image: p.image });
+        renderCart();
     }
 
     function renderCart() {
@@ -510,18 +429,20 @@
         if (!cart.length) {
             box.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;font-weight:800;">Carrito vacío</div>';
             document.getElementById('sum-total').textContent = 'RD$ 0.00';
+            document.getElementById('cart-count-badge').textContent = '0 ítems';
             return;
         }
         var total = 0;
-        box.innerHTML = cart.map(function(it) {
+        box.innerHTML = cart.map(function(it, idx) {
             total += (it.price * it.qty);
             return '<div class="cart-item">' +
                 '<img src="' + escHtml(it.image) + '" class="ci-thumb" alt="">' +
                 '<div style="flex:1;min-width:0;"><div style="font-weight:900;font-size:0.78rem;">' + escHtml(it.name) + '</div><div style="font-size:0.7rem;color:#64748b;">' + fmtMoney(it.price) + ' x ' + it.qty + '</div></div>' +
-                '<span style="font-weight:900;">' + fmtMoney(it.price * it.qty) + '</span>' +
+                '<div style="display:flex;gap:3px;align-items:center;"><button type="button" class="qty-btn" data-action="cart-dec" data-idx="' + idx + '">-</button><span style="font-weight:900;">' + it.qty + '</span><button type="button" class="qty-btn" data-action="cart-inc" data-idx="' + idx + '">+</button></div>' +
             '</div>';
         }).join('');
         document.getElementById('sum-total').textContent = fmtMoney(total);
+        document.getElementById('cart-count-badge').textContent = cart.length + ' ítems';
     }
 
     document.addEventListener('click', function(e) {
@@ -529,71 +450,62 @@
         if (!el) return;
         var act = el.getAttribute('data-action');
 
-        if (act === 'nav') {
+        if (act === 'open-pin-pad') {
+            openMod('modal-pin-pad');
+        } else if (act === 'pin-key') {
+            var k = el.getAttribute('data-k');
+            if (k === 'BACK') pinBuffer = pinBuffer.slice(0, -1);
+            else if (k === 'ENTER') { closeMod('modal-pin-pad'); handleLogin(); }
+            else if (pinBuffer.length < 6) pinBuffer += k;
+            updatePinDisplay();
+        } else if (act === 'do-login') {
+            handleLogin();
+        } else if (act === 'logout') {
+            currentUser = null; pinBuffer = '';
+            document.getElementById('screen-pos').style.display = 'none';
+            document.getElementById('screen-login').style.display = 'flex';
+        } else if (act === 'nav') {
             switchView(el.getAttribute('data-view'));
+        } else if (act === 'filter-cat') {
+            activeCatFilter = el.getAttribute('data-cat');
+            renderCatalog();
         } else if (act === 'add-prod') {
-            var p = products.find(function(x) { return x.id === Number(el.getAttribute('data-id')); });
-            if (!p) return;
-            var ex = cart.find(function(c) { return c.prodId === p.id; });
-            if (ex) ex.qty += 1; else cart.push({ prodId: p.id, name: p.name, price: p.price, qty: 1, image: p.image });
-            renderCart();
+            addProductToCart(Number(el.getAttribute('data-id')));
+        } else if (act === 'cart-inc') {
+            var i1 = Number(el.getAttribute('data-idx'));
+            if (cart[i1]) { cart[i1].qty += 1; renderCart(); }
+        } else if (act === 'cart-dec') {
+            var i2 = Number(el.getAttribute('data-idx'));
+            if (cart[i2]) { cart[i2].qty -= 1; if (cart[i2].qty <= 0) cart.splice(i2, 1); renderCart(); }
         } else if (act === 'clear-cart') {
-            cart = [];
-            renderCart();
-        } else if (act === 'select-img-for-prod') {
-            editingProductId = Number(el.getAttribute('data-id'));
-            renderGalleryModalThumbs();
-            openMod('modal-image-gallery');
-        } else if (act === 'open-gallery-modal') {
-            editingProductId = null; // Modo libre
-            renderGalleryModalThumbs();
-            openMod('modal-image-gallery');
-        } else if (act === 'pick-gallery-img') {
-            var chosenUrl = el.getAttribute('data-url');
-            if (editingProductId) {
-                var prod = products.find(function(x) { return x.id === editingProductId; });
-                if (prod) {
-                    prod.image = chosenUrl;
-                    localStorage.setItem('ew_products_gallery_v1', JSON.stringify(products));
-                    renderProductsTable();
-                    renderCatalog();
-                    toast('✓ Imagen asignada a ' + prod.name);
-                }
-            }
-            closeMod('modal-image-gallery');
+            cart = []; renderCart();
+        } else if (act === 'open-checkout') {
+            if (!cart.length) { toast('⚠️ Carrito vacío'); return; }
+            var tot = cart.reduce(function(a, b) { return a + (b.price * b.qty); }, 0);
+            document.getElementById('chk-base-total').textContent = fmtMoney(tot);
+            document.getElementById('inp-cash').value = '';
+            openMod('modal-checkout');
+        } else if (act === 'confirm-sale') {
+            var tot = cart.reduce(function(a, b) { return a + (b.price * b.qty); }, 0);
+            salesHistory.push({
+                code: 'TCK-' + Math.floor(10000 + Math.random() * 90000),
+                total: tot,
+                method: 'Efectivo',
+                date: new Date().toLocaleDateString()
+            });
+            localStorage.setItem('ew_sales_v1', JSON.stringify(salesHistory));
+            cart = []; closeMod('modal-checkout'); renderCart();
+            toast('✓ ¡Venta completada con éxito!');
         } else if (act === 'close-modal') {
             closeMod(el.getAttribute('data-modal'));
         }
     });
 
-    document.getElementById('inp-upload-gallery-file').addEventListener('change', function(e) {
-        var file = e.target.files && e.target.files[0];
-        if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function(ev) {
-            var img = new Image();
-            img.onload = function() {
-                var canvas = document.createElement('canvas');
-                canvas.width = 180;
-                canvas.height = 180;
-                var ctx = canvas.getContext('2d');
-                var minS = Math.min(img.width, img.height);
-                ctx.drawImage(img, (img.width - minS)/2, (img.height - minS)/2, minS, minS, 0, 0, 180, 180);
-                var newBase64 = canvas.toDataURL('image/jpeg', 0.82);
-                
-                savedGallery.push(newBase64);
-                localStorage.setItem('ew_image_gallery', JSON.stringify(savedGallery));
-                renderGalleryModalThumbs();
-                toast('✓ Foto subida y agregada a la galería');
-            };
-            img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-    });
+    document.getElementById('inp-menu-search').addEventListener('input', renderCatalog);
 
     window.onload = function() {
-        renderCatalog();
-        renderCart();
+        applyLogo();
+        renderLoginUsers();
     };
 })();
 </script>
