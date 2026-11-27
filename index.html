@@ -4428,16 +4428,36 @@
         reader.onload = function(ev) {
             var img = new Image();
             img.onload = function() {
-                var size = 280;
+                var size = 150;
                 var canvas = document.createElement('canvas');
                 canvas.width = size;
                 canvas.height = size;
                 var ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, size, size);
                 var minSide = Math.min(img.width, img.height);
                 var sx = (img.width - minSide) / 2;
                 var sy = (img.height - minSide) / 2;
                 ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
-                callback(canvas.toDataURL('image/jpeg', 0.84));
+
+                // Compresión inteligente progresiva para asegurar peso < 12 KB y compatibilidad total con Firebase
+                var quality = 0.78;
+                var dataUrl = canvas.toDataURL('image/jpeg', quality);
+                while (dataUrl.length > 16000 && quality > 0.35) {
+                    quality -= 0.08;
+                    dataUrl = canvas.toDataURL('image/jpeg', quality);
+                }
+                if (dataUrl.length > 16000) {
+                    var smallCanvas = document.createElement('canvas');
+                    smallCanvas.width = 120;
+                    smallCanvas.height = 120;
+                    var sCtx = smallCanvas.getContext('2d');
+                    sCtx.fillStyle = '#ffffff';
+                    sCtx.fillRect(0, 0, 120, 120);
+                    sCtx.drawImage(img, sx, sy, minSide, minSide, 0, 0, 120, 120);
+                    dataUrl = smallCanvas.toDataURL('image/jpeg', 0.65);
+                }
+                callback(dataUrl);
             };
             img.src = ev.target.result;
         };
@@ -6732,11 +6752,14 @@
     document.getElementById('inp-p-img-file').addEventListener('change', function(e) {
         var file = e.target.files && e.target.files[0];
         if (!file) return;
+        var inputEl = this;
         resizeImageToSquareBase64(file, function(sqDataUrl) {
             draftProductImg = sqDataUrl;
             document.getElementById('inp-p-img-url').value = '';
             document.getElementById('prod-img-preview').src = sqDataUrl;
-            toast('🖼️ Imagen cuadrada cargada');
+            var kb = Math.round((sqDataUrl.length * 0.75) / 1024);
+            toast('🖼️ Imagen optimizada (' + kb + ' KB) lista para Firebase');
+            inputEl.value = '';
         });
     });
 
