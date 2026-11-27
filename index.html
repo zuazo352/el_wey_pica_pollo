@@ -1823,6 +1823,7 @@
                     <span id="badge-net-status" class="pill-badge pill-online">🟢 En Línea</span>
                     <button type="button" id="btn-wh-switch" class="pill-badge" data-action="switch-wh" title="Cambiar Almacén Activo">🏪 Almacén Matriz</button>
                     <button type="button" id="btn-price-tier" class="pill-badge pill-price-1" data-action="toggle-price-tier" title="Lista de Precios Activa">🏷️ Precio 1 (Matriz)</button>
+                    <button type="button" id="btn-shift-select" class="pill-badge pill-price-1" data-action="toggle-active-shift" title="Cambiar Turno Activo">☀️ Turno 1</button>
                     <span id="badge-user-role" class="pill-badge">👤 Administrador</span>
                 </div>
             </div>
@@ -2206,6 +2207,14 @@
                             <option value="all">Todos los Almacenes</option>
                             <option value="1">Almacén Matriz</option>
                             <option value="2">Almacén Sucursal</option>
+                        </select>
+                    </div>
+                    <div class="rep-date-fld">
+                        <label>☀️ Turno</label>
+                        <select id="rep-shift-filter">
+                            <option value="all">Ambos Turnos (Día Completo)</option>
+                            <option value="1">Solo Turno 1 (Mañana)</option>
+                            <option value="2">Solo Turno 2 (Tarde)</option>
                         </select>
                     </div>
                     <button type="button" class="btn-primary-green" style="height:38px;" data-action="rep-apply">🔍 Generar Reporte</button>
@@ -2750,10 +2759,14 @@
                 <label>Observaciones del Cierre (Opcional)</label>
                 <input type="text" id="inp-cz-note" placeholder="Ej. Cuadre exacto turno día">
             </div>
+            <label class="perm-chk" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:9px;padding:10px;color:#166534;margin-top:8px;cursor:pointer;">
+                <input type="checkbox" id="chk-reset-turno" checked style="width:18px;height:18px;">
+                🔄 <b>Cambio de Turno (Reiniciar turno y dejar el efectivo contado como nuevo fondo inicial)</b>
+            </label>
         </div>
         <div class="modal-foot">
             <button type="button" class="tab-btn" data-action="close-modal" data-modal="modal-close-z">Cancelar</button>
-            <button type="button" class="btn-primary-green" style="background:#18181b;color:#fde047;" data-action="print-z-report">🖨️ Imprimir Reporte Cierre Z (80mm)</button>
+            <button type="button" class="btn-primary-green" style="background:#18181b;color:#fde047;" data-action="print-z-report">🖨️ IMPRIMIR CIERRE Z Y REINICIAR TURNO</button>
         </div>
     </div>
 </div>
@@ -3487,6 +3500,7 @@
 
     var currentUser = null;
     var activeWh = 1;
+    var activeShift = 1;
     var activePriceTier = 1;
     var activeCatFilter = 'Todas';
     var activeCatPage = 1;
@@ -3792,6 +3806,9 @@
             sb1.classList.toggle('active', activeWh === 1);
             sb2.classList.toggle('active', activeWh === 2);
         }
+
+        var shiftBtn = document.getElementById('btn-shift-select');
+        if (shiftBtn) shiftBtn.textContent = (activeShift === 2 ? '🌙 Turno 2' : '☀️ Turno 1');
 
         var pBtn = document.getElementById('btn-price-tier');
         var sBanner = document.getElementById('sales-tier-banner');
@@ -4196,6 +4213,7 @@
             cashReceived: cashRec,
             change: method === 'Efectivo' ? Math.max(0, Math.round((cashRec - finalTotal) * 100) / 100) : 0,
             status: 'COMPLETADA',
+            shift: activeShift,
             isoDate: toISODateLocal(nowObj),
             date: nowObj.toLocaleDateString('es-DO'),
             time: nowObj.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit' }),
@@ -4958,9 +4976,11 @@
         var endStr = eInp.value;
         var whF = document.getElementById('rep-wh-filter').value;
 
+        var shiftF = document.getElementById('rep-shift-filter').value;
         var filteredSales = salesHistory.filter(function(s) {
             if (s.status === 'ANULADA') return false;
             if (whF !== 'all' && String(s.wh) !== whF) return false;
+            if (shiftF !== 'all' && Number(s.shift || 1) !== Number(shiftF)) return false;
             var sISO = parseSaleISODate(s);
             if (startStr && sISO < startStr) return false;
             if (endStr && sISO > endStr) return false;
@@ -5886,6 +5906,11 @@
                 updateTopbarUI();
                 renderCatalog();
                 renderCart();
+            } else if (act === 'toggle-active-shift') {
+                activeShift = activeShift === 1 ? 2 : 1;
+                updateTopbarUI();
+                renderCajaZ();
+                toast('🕒 Turno activo cambiado a: ' + (activeShift === 2 ? 'Turno 2 (Tarde)' : 'Turno 1 (Mañana)'));
             } else if (act === 'switch-wh') {
                 var u = getActiveCashier();
                 if (u.whAccess === '1' || u.whAccess === '2') {
@@ -6032,8 +6057,32 @@
             } else if (act === 'print-z-report') {
                 var counted = parseFloat(document.getElementById('inp-cz-counted').value || '0') || 0;
                 var cNote = (document.getElementById('inp-cz-note').value || '').trim();
+                var resetTurno = document.getElementById('chk-reset-turno') && document.getElementById('chk-reset-turno').checked;
+                
                 closeMod('modal-close-z');
                 openReceiptViewer('Cierre de Caja Z 80mm', '#18181b', renderZReport80HTML(counted, cNote));
+
+                if (resetTurno) {
+                    // Limpiar ventas, adelantos, compras y eventualidades del almacén activo (o general) para el nuevo turno
+                    salesHistory = salesHistory.filter(function(s) { return Number(s.wh) !== Number(activeWh); });
+                    salaryAdvances = salaryAdvances.filter(function(a) { return Number(a.wh) !== Number(activeWh); });
+                    productPurchases = productPurchases.filter(function(p) { return Number(p.wh) !== Number(activeWh); });
+                    cashEvents = cashEvents.filter(function(ev) { return Number(ev.wh) !== Number(activeWh); });
+
+                    if (!shiftsState[activeWh]) shiftsState[activeWh] = {};
+                    shiftsState[activeWh].fund = counted;
+
+                    saveData('ew_sales_v1', salesHistory);
+                    saveData('ew_advances_v1', salaryAdvances);
+                    saveData('ew_purchases_v1', productPurchases);
+                    saveData('ew_events_v1', cashEvents);
+                    saveData('ew_shifts', shiftsState);
+
+                    updateTopbarUI();
+                    renderCajaZ();
+                    renderCatalog();
+                    toast('🔄 ¡Turno reiniciado! Fondo inicial configurado en ' + fmtMoney(counted));
+                }
             } else if (act === 'open-modal-adelantos') {
                 openMod('modal-adelantos');
             } else if (act === 'save-advance') {
@@ -6754,6 +6803,7 @@
 
     /* Listeners de Reportes */
     document.getElementById('rep-wh-filter').addEventListener('change', renderReportsView);
+    document.getElementById('rep-shift-filter').addEventListener('change', renderReportsView);
 
     /* Listeners del Módulo Conduce */
     document.getElementById('cnd-from-wh').addEventListener('change', function() {
