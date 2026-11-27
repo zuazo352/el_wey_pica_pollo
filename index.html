@@ -6631,6 +6631,7 @@
 
     function isUniversalTextInput(el) {
         if (!el || el.tagName !== 'INPUT') return false;
+        if (el.id === 'inp-p-img-url') return false;
         if (el.type === 'number' || el.type === 'password' || el.type === 'date' || el.type === 'hidden') return false;
         if (el.hasAttribute('data-numpad')) return false;
         // Solo aplica en inputs de texto general (nombres, descripciones, teléfonos, etc.)
