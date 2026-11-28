@@ -2113,16 +2113,24 @@
 
             <div class="stat-grid">
                 <div class="stat-card">
-                    <div class="stat-lbl">Fondo Inicial de Caja</div>
+                    <div class="stat-lbl">Fondo Inicial</div>
                     <div id="z-kpi-fondo" class="stat-val">RD$ 0.00</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-lbl">Ventas en Efectivo</div>
+                    <div class="stat-lbl">💵 Venta Efectivo</div>
                     <div id="z-kpi-cash-sales" class="stat-val" style="color:var(--success);">RD$ 0.00</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-lbl">Tarjeta / Transf. / PedidosYa</div>
-                    <div id="z-kpi-other-sales" class="stat-val" style="color:var(--info);">RD$ 0.00</div>
+                    <div class="stat-lbl">💳 Venta Tarjeta</div>
+                    <div id="z-kpi-card-sales" class="stat-val" style="color:var(--info);">RD$ 0.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-lbl">🏦 Transferencias</div>
+                    <div id="z-kpi-transfer-sales" class="stat-val" style="color:#0369a1;">RD$ 0.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-lbl">🛵 Pedidos Ya</div>
+                    <div id="z-kpi-pedidosya-sales" class="stat-val" style="color:#ea580c;">RD$ 0.00</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-lbl">Salidas Efectivo (Adelantos + Compras + Egresos)</div>
@@ -2502,6 +2510,13 @@
                         <select id="usr-price-tier">
                             <option value="1">Precio 1 (Matriz)</option>
                             <option value="2">Precio 2 Sucursal</option>
+                        </select>
+                    </div>
+                    <div class="fld">
+                        <label>☀️ Turno Fijo por Defecto al Iniciar Sesión</label>
+                        <select id="usr-default-shift">
+                            <option value="1">Turno 1 (Mañana)</option>
+                            <option value="2">Turno 2 (Tarde)</option>
                         </select>
                     </div>
                     <div class="fld">
@@ -3775,6 +3790,7 @@
         errBox.style.display = 'none';
         currentUser = found;
         activeWh = found.whAccess === '2' ? 2 : 1;
+        activeShift = Number(found.defaultShift) || 1;
         activePriceTier = Number(found.priceTier) === 2 ? 2 : 1;
         activeCatPage = 1;
         cart = [];
@@ -4684,32 +4700,56 @@
     /* =========================================================================
        J. MÓDULO DE CAJA Z, DENOMINACIONES, ADELANTOS, COMPRAS Y EVENTUALIDADES
     ========================================================================= */
+    function getActiveShiftSales() {
+        var todayISO = toISODateLocal(new Date());
+        return salesHistory.filter(function(s) {
+            if (Number(s.wh) !== Number(activeWh)) return false;
+            if (s.status === 'ANULADA') return false;
+            if (Number(s.shift || 1) !== Number(activeShift)) return false;
+            var sISO = parseSaleISODate(s);
+            return sISO === todayISO;
+        });
+    }
+
+    function getActiveShiftOps(arr) {
+        var todayStr = new Date().toLocaleDateString('es-DO');
+        return (arr || []).filter(function(item) {
+            if (Number(item.wh) !== Number(activeWh)) return false;
+            if (item.shift != null && Number(item.shift) !== Number(activeShift)) return false;
+            if (item.date && item.date !== todayStr) return false;
+            return true;
+        });
+    }
+
     function getExpectedDrawerAmount() {
         var fund = Number((shiftsState[activeWh] && shiftsState[activeWh].fund) || 0);
-        var whSales = salesHistory.filter(function(s) { return Number(s.wh) === Number(activeWh) && s.status !== 'ANULADA'; });
+        var whSales = getActiveShiftSales();
         var cashSales = whSales.filter(function(s) { return s.method === 'Efectivo'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
-        var advCash = salaryAdvances.filter(function(a) { return Number(a.wh) === Number(activeWh) && a.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
-        var purCash = productPurchases.filter(function(p) { return Number(p.wh) === Number(activeWh) && p.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
-        var evIn = cashEvents.filter(function(e) { return Number(e.wh) === Number(activeWh) && e.type === 'INGRESO'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
-        var evOut = cashEvents.filter(function(e) { return Number(e.wh) === Number(activeWh) && e.type === 'EGRESO'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
+        var advCash = getActiveShiftOps(salaryAdvances).filter(function(a) { return a.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
+        var purCash = getActiveShiftOps(productPurchases).filter(function(p) { return p.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
+        var evIn = getActiveShiftOps(cashEvents).filter(function(e) { return e.type === 'INGRESO'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
+        var evOut = getActiveShiftOps(cashEvents).filter(function(e) { return e.type === 'EGRESO'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
         return Math.round((fund + cashSales + evIn - (advCash + purCash + evOut)) * 100) / 100;
     }
 
     function renderCajaZ() {
-        document.getElementById('caja-wh-subtitle').textContent = 'Almacén Activo: ' + getWhName(activeWh);
+        var shiftLabel = activeShift === 2 ? 'Turno 2 (Tarde)' : 'Turno 1 (Mañana)';
+        document.getElementById('caja-wh-subtitle').textContent = 'Almacén Activo: ' + getWhName(activeWh) + ' • ' + shiftLabel;
         var fund = Number((shiftsState[activeWh] && shiftsState[activeWh].fund) || 0);
 
-        var whSales = salesHistory.filter(function(s) { return Number(s.wh) === Number(activeWh) && s.status !== 'ANULADA'; });
+        var whSales = getActiveShiftSales();
         var cashSales = whSales.filter(function(s) { return s.method === 'Efectivo'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
-        var otherSales = whSales.filter(function(s) { return s.method !== 'Efectivo'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
+        var cardSales = whSales.filter(function(s) { return s.method === 'Tarjeta'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
+        var transferSales = whSales.filter(function(s) { return s.method === 'Transferencia'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
+        var pedidosYaSales = whSales.filter(function(s) { return s.method === 'PedidosYa'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
 
-        var whAdvs = salaryAdvances.filter(function(a) { return Number(a.wh) === Number(activeWh); });
+        var whAdvs = getActiveShiftOps(salaryAdvances);
         var advCash = whAdvs.filter(function(a) { return a.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
 
-        var whPurs = productPurchases.filter(function(p) { return Number(p.wh) === Number(activeWh); });
+        var whPurs = getActiveShiftOps(productPurchases);
         var purCash = whPurs.filter(function(p) { return p.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
 
-        var whEvs = cashEvents.filter(function(e) { return Number(e.wh) === Number(activeWh); });
+        var whEvs = getActiveShiftOps(cashEvents);
         var evOut = whEvs.filter(function(e) { return e.type === 'EGRESO'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
 
         var totalCashOuts = advCash + purCash + evOut;
@@ -4717,7 +4757,9 @@
 
         document.getElementById('z-kpi-fondo').textContent = fmtMoney(fund);
         document.getElementById('z-kpi-cash-sales').textContent = fmtMoney(cashSales);
-        document.getElementById('z-kpi-other-sales').textContent = fmtMoney(otherSales);
+        document.getElementById('z-kpi-card-sales').textContent = fmtMoney(cardSales);
+        document.getElementById('z-kpi-transfer-sales').textContent = fmtMoney(transferSales);
+        document.getElementById('z-kpi-pedidosya-sales').textContent = fmtMoney(pedidosYaSales);
         document.getElementById('z-kpi-outs').textContent = fmtMoney(totalCashOuts);
         document.getElementById('z-kpi-drawer').textContent = fmtMoney(netDrawer);
 
@@ -4851,6 +4893,7 @@
         productPurchases.push({
             id: 'PUR-' + Date.now(),
             wh: activeWh,
+            shift: activeShift,
             desc: descText,
             qty: qty,
             cost: cost,
@@ -4886,6 +4929,7 @@
             id: 'ADV-' + Date.now(),
             code: code,
             wh: activeWh,
+            shift: activeShift,
             whName: getWhName(activeWh),
             employee: emp,
             cedula: ced,
@@ -4920,6 +4964,7 @@
         cashEvents.push({
             id: 'EVT-' + Date.now(),
             wh: activeWh,
+            shift: activeShift,
             type: type,
             desc: desc,
             amount: Math.round(amt * 100) / 100,
@@ -5529,16 +5574,24 @@
 
     function renderZReport80HTML(countedPhysical, closeNote) {
         var logo = '<img src="' + THERMAL_LOGO_URI + '" class="tk-logo" alt="EL WEY PICA POLLO">';
+        var shiftLabel = activeShift === 2 ? 'Turno 2 (Tarde)' : 'Turno 1 (Mañana)';
         var fund = Number((shiftsState[activeWh] && shiftsState[activeWh].fund) || 0);
-        var whSales = salesHistory.filter(function(s) { return Number(s.wh) === Number(activeWh) && s.status !== 'ANULADA'; });
-        var cashSales = whSales.filter(function(s) { return s.method === 'Efectivo'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
-        var cardSales = whSales.filter(function(s) { return s.method === 'Tarjeta'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
-        var transSales = whSales.filter(function(s) { return s.method === 'Transferencia' || s.method === 'PedidosYa'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
+        var whSales = getActiveShiftSales();
+        var cashList = whSales.filter(function(s) { return s.method === 'Efectivo'; });
+        var cardList = whSales.filter(function(s) { return s.method === 'Tarjeta'; });
+        var transList = whSales.filter(function(s) { return s.method === 'Transferencia'; });
+        var pyList = whSales.filter(function(s) { return s.method === 'PedidosYa'; });
 
-        var advCash = salaryAdvances.filter(function(a) { return Number(a.wh) === Number(activeWh) && a.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
-        var purCash = productPurchases.filter(function(p) { return Number(p.wh) === Number(activeWh) && p.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
-        var evIn = cashEvents.filter(function(e) { return Number(e.wh) === Number(activeWh) && e.type === 'INGRESO'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
-        var evOut = cashEvents.filter(function(e) { return Number(e.wh) === Number(activeWh) && e.type === 'EGRESO'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
+        var cashSales = cashList.reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
+        var cardSales = cardList.reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
+        var transSales = transList.reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
+        var pedidosYaSales = pyList.reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
+        var totalShiftSales = Math.round((cashSales + cardSales + transSales + pedidosYaSales) * 100) / 100;
+
+        var advCash = getActiveShiftOps(salaryAdvances).filter(function(a) { return a.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
+        var purCash = getActiveShiftOps(productPurchases).filter(function(p) { return p.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
+        var evIn = getActiveShiftOps(cashEvents).filter(function(e) { return e.type === 'INGRESO'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
+        var evOut = getActiveShiftOps(cashEvents).filter(function(e) { return e.type === 'EGRESO'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
         var drawer = getExpectedDrawerAmount();
         var diff = Math.round(((countedPhysical || 0) - drawer) * 100) / 100;
 
@@ -5549,13 +5602,16 @@
             '</div>' +
             '<div class="tk-dash"></div>' +
             '<div><b>Almacén:</b> ' + escHtml(getWhName(activeWh)) + '</div>' +
+            '<div><b>Turno:</b> ' + escHtml(shiftLabel) + '</div>' +
             '<div><b>Fecha:</b> ' + new Date().toLocaleString('es-DO') + '</div>' +
             '<div><b>Cajero:</b> ' + escHtml(getActiveCashier().name) + '</div>' +
             '<div class="tk-dash"></div>' +
-            '<div class="tk-row"><span>Fondo Inicial:</span><span>' + fmtMoney(fund) + '</span></div>' +
-            '<div class="tk-row"><span>Ventas Efectivo:</span><span>' + fmtMoney(cashSales) + '</span></div>' +
-            '<div class="tk-row"><span>Ventas Tarjeta:</span><span>' + fmtMoney(cardSales) + '</span></div>' +
-            '<div class="tk-row"><span>Transf. / PedidosYa:</span><span>' + fmtMoney(transSales) + '</span></div>' +
+            '<div class="tk-row"><span><b>Fondo Inicial:</b></span><span><b>' + fmtMoney(fund) + '</b></span></div>' +
+            '<div class="tk-row"><span>Venta Efectivo (' + cashList.length + '):</span><span>' + fmtMoney(cashSales) + '</span></div>' +
+            '<div class="tk-row"><span>Venta Tarjeta (' + cardList.length + '):</span><span>' + fmtMoney(cardSales) + '</span></div>' +
+            '<div class="tk-row"><span>Transferencias (' + transList.length + '):</span><span>' + fmtMoney(transSales) + '</span></div>' +
+            '<div class="tk-row"><span>Pedidos Ya (' + pyList.length + '):</span><span>' + fmtMoney(pedidosYaSales) + '</span></div>' +
+            '<div class="tk-row" style="font-weight:900;border-top:1px dotted #000;padding-top:3px;margin-top:3px;"><span>TOTAL VENTAS TURNO (' + whSales.length + '):</span><span>' + fmtMoney(totalShiftSales) + '</span></div>' +
             '<div class="tk-row"><span>Ingresos Eventuales:</span><span>+' + fmtMoney(evIn) + '</span></div>' +
             '<div class="tk-dash"></div>' +
             '<div class="tk-row"><span>Adelantos Sueldo (Efec):</span><span>-' + fmtMoney(advCash) + '</span></div>' +
@@ -6063,25 +6119,18 @@
                 openReceiptViewer('Cierre de Caja Z 80mm', '#18181b', renderZReport80HTML(counted, cNote));
 
                 if (resetTurno) {
-                    // Limpiar ventas, adelantos, compras y eventualidades del almacén activo (o general) para el nuevo turno
-                    salesHistory = salesHistory.filter(function(s) { return Number(s.wh) !== Number(activeWh); });
-                    salaryAdvances = salaryAdvances.filter(function(a) { return Number(a.wh) !== Number(activeWh); });
-                    productPurchases = productPurchases.filter(function(p) { return Number(p.wh) !== Number(activeWh); });
-                    cashEvents = cashEvents.filter(function(ev) { return Number(ev.wh) !== Number(activeWh); });
-
+                    // Cierre Z de turno: Actualizar el fondo inicial para el siguiente turno y cambiar automáticamente al siguiente turno (Turno 1 -> Turno 2, o viceversa)
+                    // NOTA: Se conservan intactos el historial de ventas y reportes para auditoría gerencial.
                     if (!shiftsState[activeWh]) shiftsState[activeWh] = {};
                     shiftsState[activeWh].fund = counted;
+                    activeShift = activeShift === 1 ? 2 : 1;
 
-                    saveData('ew_sales_v1', salesHistory);
-                    saveData('ew_advances_v1', salaryAdvances);
-                    saveData('ew_purchases_v1', productPurchases);
-                    saveData('ew_events_v1', cashEvents);
                     saveData('ew_shifts', shiftsState);
 
                     updateTopbarUI();
                     renderCajaZ();
                     renderCatalog();
-                    toast('🔄 ¡Turno reiniciado! Fondo inicial configurado en ' + fmtMoney(counted));
+                    toast('🔄 Cierre Z completado. Turno cambiado a ' + (activeShift === 2 ? 'Turno 2' : 'Turno 1') + ' con fondo de ' + fmtMoney(counted));
                 }
             } else if (act === 'open-modal-adelantos') {
                 openMod('modal-adelantos');
@@ -6341,6 +6390,7 @@
                     document.getElementById('usr-role').value = euObj.role;
                     document.getElementById('usr-wh').value = euObj.whAccess || 'both';
                     document.getElementById('usr-price-tier').value = String(euObj.priceTier || 1);
+                    document.getElementById('usr-default-shift').value = String(euObj.defaultShift || 1);
                     setUserPermissionsCheckboxes(euObj.permissions);
                     renderUserAccessSelectors(euObj.allowedCategories, euObj.allowedProducts);
                     toast('✏️ Editando usuario: ' + euObj.name);
@@ -6363,6 +6413,7 @@
                     role: document.getElementById('usr-role').value,
                     whAccess: document.getElementById('usr-wh').value,
                     priceTier: Number(document.getElementById('usr-price-tier').value || 1),
+                    defaultShift: Number(document.getElementById('usr-default-shift').value || 1),
                     permissions: uPerms,
                     allowedCategories: uAllowedCats,
                     allowedProducts: uAllowedProds
