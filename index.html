@@ -1649,6 +1649,16 @@
             transform: translateX(-50%) translateY(0);
         }
 
+        .ticket-cut-divider {
+            border-top: 2px dashed #64748b;
+            margin: 16px -10px;
+            padding-top: 4px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: 900;
+            color: #475569;
+            letter-spacing: 1px;
+        }
         @media print {
             body * {
                 visibility: hidden !important;
@@ -1657,7 +1667,7 @@
                 visibility: visible !important;
             }
             #print-area-80 {
-                position: fixed !important;
+                position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 80mm !important;
@@ -1666,6 +1676,24 @@
                 border: none !important;
                 background: #ffffff !important;
                 color: #000000 !important;
+            }
+            .ticket-cut-divider {
+                page-break-before: always !important;
+                break-before: page !important;
+                border: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
+                color: transparent !important;
+            }
+            body.print-only-z .ticket-section-products,
+            body.print-only-z .ticket-cut-divider {
+                display: none !important;
+            }
+            body.print-only-prods .ticket-section-z,
+            body.print-only-prods .ticket-cut-divider {
+                display: none !important;
             }
         }
     </style>
@@ -2043,6 +2071,7 @@
                         <option value="Tarjeta">💳 Tarjeta</option>
                         <option value="Transferencia">🏦 Transferencia</option>
                         <option value="PedidosYa">🛵 Pedidos Ya</option>
+                        <option value="La Casa">🏠 La Casa (Costo)</option>
                     </select>
                     <select id="hist-wh-filter" class="tab-btn" style="height:38px;">
                         <option value="all">Todos los Almacenes</option>
@@ -2131,6 +2160,10 @@
                 <div class="stat-card">
                     <div class="stat-lbl">🛵 Pedidos Ya</div>
                     <div id="z-kpi-pedidosya-sales" class="stat-val" style="color:#ea580c;">RD$ 0.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-lbl">🏠 La Casa (Costo)</div>
+                    <div id="z-kpi-lacasa-sales" class="stat-val" style="color:#854d0e;">RD$ 0.00</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-lbl">Salidas Efectivo (Adelantos + Compras + Egresos)</div>
@@ -2257,6 +2290,11 @@
                     <div class="stat-lbl">🏦 Ventas Transferencia</div>
                     <div id="rep-kpi-transfer" class="stat-val" style="color:#0369a1;">RD$ 0.00</div>
                     <div id="rep-kpi-transfer-cnt" class="stat-sub">0 facturas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-lbl">🏠 Consumo La Casa (Costo)</div>
+                    <div id="rep-kpi-lacasa" class="stat-val" style="color:#854d0e;">RD$ 0.00</div>
+                    <div id="rep-kpi-lacasa-cnt" class="stat-sub">0 facturas</div>
                 </div>
                 <div class="stat-card" style="border:2px solid var(--info);background:#eff6ff;">
                     <div class="stat-lbl" style="color:#1e3a8a;">📊 Ventas Totales</div>
@@ -2636,6 +2674,7 @@
                     <option value="Tarjeta">💳 Tarjeta (+10% Impuesto Uso Verifon)</option>
                     <option value="Transferencia">🏦 Transferencia Bancaria</option>
                     <option value="PedidosYa">🛵 Pedidos Ya</option>
+                    <option value="La Casa">🏠 La Casa (Consumo Interno a Precio de Costo)</option>
                 </select>
             </div>
 
@@ -2651,6 +2690,10 @@
 
             <div id="chk-verifon-note" style="display:none;background:#eff6ff;border:1.5px solid #93c5fd;color:#1e40af;padding:8px 10px;border-radius:8px;font-size:0.78rem;font-weight:800;margin-bottom:10px;">
                 💳 Todos los pagos con tarjeta incluyen <b>10% Impuesto Uso Verifon</b> (+<span id="chk-verifon-amt">RD$ 0.00</span>). Total a cobrar: <span id="chk-card-total" style="font-weight:900;">RD$ 0.00</span>
+            </div>
+
+            <div id="chk-lacasa-note" style="display:none;background:#fefce8;border:1.5px solid #facc15;color:#854d0e;padding:9px 11px;border-radius:8px;font-size:0.8rem;font-weight:800;margin-bottom:10px;">
+                🏠 <b>Consumo Interno (La Casa):</b> Se descontará la mercancía del almacén y se facturará exactamente a <b>precio de costo</b> (RD$ <span id="chk-lacasa-total" style="font-weight:900;">0.00</span>), generando <b>RD$ 0.00 de ganancia</b>.
             </div>
 
             <div id="chk-cash-box">
@@ -3105,9 +3148,13 @@
         <div class="modal-body" style="background:#e2e8f0;">
             <div id="print-area-80" class="ticket-paper-80"></div>
         </div>
-        <div class="modal-foot">
+        <div class="modal-foot" style="flex-wrap:wrap;justify-content:space-between;">
             <button type="button" class="tab-btn" data-action="close-modal" data-modal="modal-receipt">Cerrar</button>
-            <button type="button" class="btn-primary-green" data-action="print-80mm">🖨️ IMPRIMIR 80MM</button>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" id="btn-print-only-z" class="tab-btn" style="display:none;background:#18181b;color:#fde047;" data-action="print-only-z">🖨️ Solo Cierre Z</button>
+                <button type="button" id="btn-print-only-prods" class="tab-btn" style="display:none;background:#eff6ff;color:#1e40af;border-color:#93c5fd;" data-action="print-only-prods">🖨️ Solo Productos</button>
+                <button type="button" class="btn-primary-green" data-action="print-80mm">🖨️ IMPRIMIR TODO (80MM)</button>
+            </div>
         </div>
     </div>
 </div>
@@ -4112,9 +4159,20 @@
         return Math.round(cart.reduce(function(acc, it) { return acc + (it.price * it.qty); }, 0) * 100) / 100;
     }
 
+    function getCartCostTotal() {
+        return Math.round(cart.reduce(function(acc, it) {
+            var pRef = products.find(function(x) { return x.id === it.prodId; });
+            var unitCost = it.cost != null ? Number(it.cost) : getProductUnitCost(pRef);
+            return acc + (unitCost * it.qty);
+        }, 0) * 100) / 100;
+    }
+
     function getCheckoutGrandTotal() {
-        var base = getCartBaseTotal();
         var method = document.getElementById('chk-pay-method').value;
+        if (method === 'La Casa') {
+            return getCartCostTotal();
+        }
+        var base = getCartBaseTotal();
         var applyVf = (method === 'Tarjeta' || verifonFeeEnabled);
         var fee = applyVf ? Math.round(base * 0.10 * 100) / 100 : 0;
         return Math.round((base + fee) * 100) / 100;
@@ -4142,6 +4200,7 @@
     function updateCheckoutMethodUI() {
         var method = document.getElementById('chk-pay-method').value;
         var base = getCartBaseTotal();
+        var costTot = getCartCostTotal();
 
         if (method === 'Tarjeta') {
             verifonFeeEnabled = true;
@@ -4150,9 +4209,16 @@
         }
         renderCart(false);
 
-        var applyVf = (method === 'Tarjeta' || verifonFeeEnabled);
+        var isLaCasa = (method === 'La Casa');
+        var applyVf = !isLaCasa && (method === 'Tarjeta' || verifonFeeEnabled);
         var vfAmt = applyVf ? Math.round(base * 0.10 * 100) / 100 : 0;
-        var grandTotal = Math.round((base + vfAmt) * 100) / 100;
+        var grandTotal = isLaCasa ? costTot : Math.round((base + vfAmt) * 100) / 100;
+
+        var baseTitleEl = document.querySelector('#modal-checkout .modal-body > div:first-child > div:first-child');
+        if (baseTitleEl) {
+            baseTitleEl.textContent = isLaCasa ? 'TOTAL A PRECIO DE COSTO (LA CASA)' : 'TOTAL BASE DE LA ORDEN';
+        }
+        document.getElementById('chk-base-total').textContent = fmtMoney(isLaCasa ? costTot : base);
 
         document.getElementById('chk-bank-box').style.display = method === 'Transferencia' ? 'block' : 'none';
         if (method === 'Transferencia') updateBankButtonsUI();
@@ -4161,6 +4227,12 @@
         var vfAmtEl = document.getElementById('chk-verifon-amt');
         if (vfAmtEl) vfAmtEl.textContent = fmtMoney(vfAmt);
         document.getElementById('chk-card-total').textContent = fmtMoney(grandTotal);
+
+        var laCasaNote = document.getElementById('chk-lacasa-note');
+        var laCasaTotEl = document.getElementById('chk-lacasa-total');
+        if (laCasaNote) laCasaNote.style.display = isLaCasa ? 'block' : 'none';
+        if (laCasaTotEl) laCasaTotEl.textContent = costTot.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
         document.getElementById('chk-cash-box').style.display = method === 'Efectivo' ? 'block' : 'none';
         calcChange();
     }
@@ -4175,11 +4247,12 @@
     function confirmSale() {
         if (!cart.length) return;
         var method = document.getElementById('chk-pay-method').value;
+        var isLaCasa = (method === 'La Casa');
         var bankUsed = method === 'Transferencia' ? (selectedTransferBank || 'Banreservas') : '';
-        var baseTotal = getCartBaseTotal();
-        var applyVf = (method === 'Tarjeta' || verifonFeeEnabled);
+        var baseTotal = isLaCasa ? getCartCostTotal() : getCartBaseTotal();
+        var applyVf = !isLaCasa && (method === 'Tarjeta' || verifonFeeEnabled);
         var verifonFee = applyVf ? Math.round(baseTotal * 0.10 * 100) / 100 : 0;
-        var finalTotal = Math.round((baseTotal + verifonFee) * 100) / 100;
+        var finalTotal = isLaCasa ? baseTotal : Math.round((baseTotal + verifonFee) * 100) / 100;
         var cashRec = method === 'Efectivo' ? (parseFloat(document.getElementById('inp-cash').value || '0') || finalTotal) : finalTotal;
 
         if (method === 'Efectivo' && cashRec < finalTotal - 0.01) {
@@ -4205,7 +4278,7 @@
             } else if (!p.noStock) {
                 var nextS = Math.max(0, getProdStock(p, activeWh) - line.qty);
                 setProdStock(p, activeWh, nextS);
-                addInvLog(p.name, 'VENTA', line.qty, 'Venta POS', nextS, activeWh, p.unit);
+                addInvLog(p.name, isLaCasa ? 'CONSUMO CASA' : 'VENTA', line.qty, isLaCasa ? 'Consumo Interno (La Casa - Costo)' : 'Venta POS', nextS, activeWh, p.unit);
             }
         }
 
@@ -4213,14 +4286,23 @@
         ordSeq += 1;
         var u = getActiveCashier();
         var nowObj = new Date();
+        var saleItemsSnapshot = JSON.parse(JSON.stringify(cart)).map(function(it) {
+            if (isLaCasa) {
+                var pRef = products.find(function(x) { return x.id === it.prodId; });
+                var uCost = it.cost != null ? Number(it.cost) : getProductUnitCost(pRef);
+                it.price = uCost;
+                it.cost = uCost;
+            }
+            return it;
+        });
         var saleObj = {
             id: 'SL-' + nowObj.getTime(),
             code: ticketCode,
             wh: activeWh,
             whName: getWhName(activeWh),
             cashier: u.name,
-            priceTier: activePriceTier,
-            customer: (document.getElementById('inp-customer-name').value || '').trim() || 'Cliente General',
+            priceTier: isLaCasa ? 0 : activePriceTier,
+            customer: (document.getElementById('inp-customer-name').value || '').trim() || (isLaCasa ? 'Consumo La Casa' : 'Cliente General'),
             method: method,
             bank: bankUsed,
             baseTotal: baseTotal,
@@ -4233,7 +4315,7 @@
             isoDate: toISODateLocal(nowObj),
             date: nowObj.toLocaleDateString('es-DO'),
             time: nowObj.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit' }),
-            items: JSON.parse(JSON.stringify(cart))
+            items: saleItemsSnapshot
         };
 
         salesHistory.push(saleObj);
@@ -4643,7 +4725,7 @@
                 ? '<button type="button" class="tab-btn" data-action="restore-sale" data-id="' + escHtml(s.id) + '">↩️ Reactivar</button>'
                 : '<button type="button" class="btn-cancel" style="height:32px;padding:0 10px;font-size:0.75rem;" data-action="void-sale" data-id="' + escHtml(s.id) + '">🚫 Anular</button>';
             var methodDisplay = s.method === 'Transferencia' && s.bank ? ('Transferencia (' + s.bank + ')') : s.method;
-            var tierShort = Number(s.priceTier || 1) === 2 ? 'P2 Sucursal' : 'P1 Matriz';
+            var tierShort = (s.method === 'La Casa' || Number(s.priceTier) === 0) ? 'La Casa (Costo)' : (Number(s.priceTier || 1) === 2 ? 'P2 Sucursal' : 'P1 Matriz');
 
             return '<tr>' +
                 '<td style="font-weight:900;">' + escHtml(s.code) + '</td>' +
@@ -4700,23 +4782,40 @@
     /* =========================================================================
        J. MÓDULO DE CAJA Z, DENOMINACIONES, ADELANTOS, COMPRAS Y EVENTUALIDADES
     ========================================================================= */
+    function getBusinessDateObj(dateObj) {
+        var d = new Date(dateObj || new Date());
+        // Si la hora es de madrugada (00:00 a 03:59), pertenece a la jornada comercial del día anterior (cierra a las 4 AM)
+        if (d.getHours() < 4) {
+            d.setDate(d.getDate() - 1);
+        }
+        return d;
+    }
+
+    function getBusinessDateISO(dateObj) {
+        return toISODateLocal(getBusinessDateObj(dateObj));
+    }
+
+    function getBusinessDateStr(dateObj) {
+        return getBusinessDateObj(dateObj).toLocaleDateString('es-DO');
+    }
+
     function getActiveShiftSales() {
-        var todayISO = toISODateLocal(new Date());
+        var bizISO = getBusinessDateISO(new Date());
         return salesHistory.filter(function(s) {
             if (Number(s.wh) !== Number(activeWh)) return false;
             if (s.status === 'ANULADA') return false;
             if (Number(s.shift || 1) !== Number(activeShift)) return false;
             var sISO = parseSaleISODate(s);
-            return sISO === todayISO;
+            return sISO === bizISO;
         });
     }
 
     function getActiveShiftOps(arr) {
-        var todayStr = new Date().toLocaleDateString('es-DO');
+        var bizStr = getBusinessDateStr(new Date());
         return (arr || []).filter(function(item) {
             if (Number(item.wh) !== Number(activeWh)) return false;
             if (item.shift != null && Number(item.shift) !== Number(activeShift)) return false;
-            if (item.date && item.date !== todayStr) return false;
+            if (item.date && item.date !== bizStr) return false;
             return true;
         });
     }
@@ -4742,6 +4841,7 @@
         var cardSales = whSales.filter(function(s) { return s.method === 'Tarjeta'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
         var transferSales = whSales.filter(function(s) { return s.method === 'Transferencia'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
         var pedidosYaSales = whSales.filter(function(s) { return s.method === 'PedidosYa'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
+        var laCasaSales = whSales.filter(function(s) { return s.method === 'La Casa'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
 
         var whAdvs = getActiveShiftOps(salaryAdvances);
         var advCash = whAdvs.filter(function(a) { return a.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
@@ -4760,6 +4860,8 @@
         document.getElementById('z-kpi-card-sales').textContent = fmtMoney(cardSales);
         document.getElementById('z-kpi-transfer-sales').textContent = fmtMoney(transferSales);
         document.getElementById('z-kpi-pedidosya-sales').textContent = fmtMoney(pedidosYaSales);
+        var zLcEl = document.getElementById('z-kpi-lacasa-sales');
+        if (zLcEl) zLcEl.textContent = fmtMoney(laCasaSales);
         document.getElementById('z-kpi-outs').textContent = fmtMoney(totalCashOuts);
         document.getElementById('z-kpi-drawer').textContent = fmtMoney(netDrawer);
 
@@ -5036,6 +5138,7 @@
         var cardTotal = 0, cardCnt = 0;
         var pyTotal = 0, pyCnt = 0;
         var trTotal = 0, trCnt = 0;
+        var lcTotal = 0, lcCnt = 0;
         var grandSales = 0;
         var totalCost = 0;
 
@@ -5049,6 +5152,7 @@
             if (s.method === 'Efectivo') { cashTotal += saleAmt; cashCnt++; }
             else if (s.method === 'Tarjeta') { cardTotal += saleAmt; cardCnt++; }
             else if (s.method === 'PedidosYa') { pyTotal += saleAmt; pyCnt++; }
+            else if (s.method === 'La Casa') { lcTotal += saleAmt; lcCnt++; }
             else { trTotal += saleAmt; trCnt++; }
 
             var saleCost = 0;
@@ -5099,6 +5203,10 @@
         document.getElementById('rep-kpi-pedidosya-cnt').textContent = pyCnt + ' factura(s)';
         document.getElementById('rep-kpi-transfer').textContent = fmtMoney(trTotal);
         document.getElementById('rep-kpi-transfer-cnt').textContent = trCnt + ' factura(s)';
+        var repLcEl = document.getElementById('rep-kpi-lacasa');
+        var repLcCntEl = document.getElementById('rep-kpi-lacasa-cnt');
+        if (repLcEl) repLcEl.textContent = fmtMoney(lcTotal);
+        if (repLcCntEl) repLcCntEl.textContent = lcCnt + ' factura(s)';
         document.getElementById('rep-kpi-total').textContent = fmtMoney(grandSales);
         document.getElementById('rep-kpi-total-cnt').textContent = filteredSales.length + ' factura(s) activa(s)';
         document.getElementById('rep-kpi-profit').textContent = fmtMoney(netProfit);
@@ -5133,7 +5241,8 @@
             { label: '💵 Efectivo', val: cashTotal, color: '#16a34a' },
             { label: '💳 Tarjeta', val: cardTotal, color: '#2563eb' },
             { label: '🛵 Pedidos Ya', val: pyTotal, color: '#dc2626' },
-            { label: '🏦 Transferencia Bancaria', val: trTotal, color: '#0284c7' }
+            { label: '🏦 Transferencia Bancaria', val: trTotal, color: '#0284c7' },
+            { label: '🏠 La Casa (Costo)', val: lcTotal, color: '#ca8a04' }
         ];
         methodsBox.innerHTML = methodItems.map(function(m) {
             var pct = grandSales > 0 ? Math.round((m.val / grandSales) * 1000) / 10 : 0;
@@ -5188,6 +5297,8 @@
             pyCnt: pyCnt,
             trTotal: trTotal,
             trCnt: trCnt,
+            lcTotal: lcTotal,
+            lcCnt: lcCnt,
             grandSales: grandSales,
             totalCost: totalCost,
             netProfit: netProfit,
@@ -5223,6 +5334,7 @@
             '<div class="tk-row"><span>Ventas Tarjeta (' + rep.cardCnt + '):</span><span><b>' + fmtMoney(rep.cardTotal) + '</b></span></div>' +
             '<div class="tk-row"><span>Ventas Pedidos Ya (' + rep.pyCnt + '):</span><span><b>' + fmtMoney(rep.pyTotal) + '</b></span></div>' +
             '<div class="tk-row"><span>Ventas Transferencia (' + rep.trCnt + '):</span><span><b>' + fmtMoney(rep.trTotal) + '</b></span></div>' +
+            '<div class="tk-row"><span>Consumo La Casa (' + (rep.lcCnt || 0) + '):</span><span><b>' + fmtMoney(rep.lcTotal || 0) + '</b></span></div>' +
             '<div class="tk-dash"></div>' +
             '<div class="tk-row" style="font-size:13.5px;font-weight:900;"><span>VENTAS TOTALES (' + rep.count + '):</span><span>' + fmtMoney(rep.grandSales) + '</span></div>' +
             '<div class="tk-row"><span>Costo Mercancía:</span><span>-' + fmtMoney(rep.totalCost) + '</span></div>' +
@@ -5444,10 +5556,14 @@
     /* =========================================================================
        K. TICKETS TÉRMICOS 80MM (VENTAS, ADELANTOS, CIERRE Z Y CONDUCE)
     ========================================================================= */
-    function openReceiptViewer(title, headerColor, htmlBody) {
+    function openReceiptViewer(title, headerColor, htmlBody, isDualZ) {
         document.getElementById('rcp-modal-title').textContent = title;
         document.getElementById('rcp-modal-head').style.background = headerColor || '#18181b';
         document.getElementById('print-area-80').innerHTML = htmlBody;
+        var bOnlyZ = document.getElementById('btn-print-only-z');
+        var bOnlyP = document.getElementById('btn-print-only-prods');
+        if (bOnlyZ) bOnlyZ.style.display = isDualZ ? 'inline-flex' : 'none';
+        if (bOnlyP) bOnlyP.style.display = isDualZ ? 'inline-flex' : 'none';
         openMod('modal-receipt');
     }
 
@@ -5475,7 +5591,7 @@
               '<div class="tk-row"><span>Cambio / Devuelta:</span><span><b>' + fmtMoney(sale.change) + '</b></span></div>'
             : '';
 
-        var tierLabel = getPriceTierLabel(sale.priceTier || 1);
+        var tierLabel = (sale.method === 'La Casa' || Number(sale.priceTier) === 0) ? 'Costo (La Casa)' : getPriceTierLabel(sale.priceTier || 1);
 
         return '<div class="tk-c">' +
                 logo +
@@ -5581,12 +5697,14 @@
         var cardList = whSales.filter(function(s) { return s.method === 'Tarjeta'; });
         var transList = whSales.filter(function(s) { return s.method === 'Transferencia'; });
         var pyList = whSales.filter(function(s) { return s.method === 'PedidosYa'; });
+        var lcList = whSales.filter(function(s) { return s.method === 'La Casa'; });
 
         var cashSales = cashList.reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
         var cardSales = cardList.reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
         var transSales = transList.reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
         var pedidosYaSales = pyList.reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
-        var totalShiftSales = Math.round((cashSales + cardSales + transSales + pedidosYaSales) * 100) / 100;
+        var laCasaSales = lcList.reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
+        var totalShiftSales = Math.round((cashSales + cardSales + transSales + pedidosYaSales + laCasaSales) * 100) / 100;
 
         var advCash = getActiveShiftOps(salaryAdvances).filter(function(a) { return a.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.amount || 0); }, 0);
         var purCash = getActiveShiftOps(productPurchases).filter(function(p) { return p.method === 'Efectivo Caja'; }).reduce(function(a, b) { return a + Number(b.total || 0); }, 0);
@@ -5611,6 +5729,7 @@
             '<div class="tk-row"><span>Venta Tarjeta (' + cardList.length + '):</span><span>' + fmtMoney(cardSales) + '</span></div>' +
             '<div class="tk-row"><span>Transferencias (' + transList.length + '):</span><span>' + fmtMoney(transSales) + '</span></div>' +
             '<div class="tk-row"><span>Pedidos Ya (' + pyList.length + '):</span><span>' + fmtMoney(pedidosYaSales) + '</span></div>' +
+            '<div class="tk-row"><span>La Casa / Costo (' + lcList.length + '):</span><span>' + fmtMoney(laCasaSales) + '</span></div>' +
             '<div class="tk-row" style="font-weight:900;border-top:1px dotted #000;padding-top:3px;margin-top:3px;"><span>TOTAL VENTAS TURNO (' + whSales.length + '):</span><span>' + fmtMoney(totalShiftSales) + '</span></div>' +
             '<div class="tk-row"><span>Ingresos Eventuales:</span><span>+' + fmtMoney(evIn) + '</span></div>' +
             '<div class="tk-dash"></div>' +
@@ -5622,6 +5741,81 @@
             '<div class="tk-row"><span>EFECTIVO CONTADO:</span><span>' + fmtMoney(countedPhysical || 0) + '</span></div>' +
             '<div class="tk-row" style="font-weight:900;"><span>DIFERENCIA:</span><span>' + fmtMoney(diff) + '</span></div>' +
             (closeNote ? ('<div style="margin-top:4px;"><b>Nota:</b> ' + escHtml(closeNote) + '</div>') : '');
+    }
+
+    function renderZProductsSold80HTML() {
+        var logo = '<img src="' + THERMAL_LOGO_URI + '" class="tk-logo" alt="EL WEY PICA POLLO">';
+        var shiftLabel = activeShift === 2 ? 'Turno 2 (Tarde)' : 'Turno 1 (Mañana)';
+        var whSales = getActiveShiftSales();
+
+        var prodMap = {};
+        var grandImporte = 0;
+        var totalVerifon = 0;
+
+        whSales.forEach(function(s) {
+            totalVerifon += Number(s.verifonFee || 0);
+            (s.items || []).forEach(function(it) {
+                var key = String(it.prodId || it.name);
+                var qty = Number(it.qty || 0);
+                var imp = Math.round(Number(it.price || 0) * qty * 100) / 100;
+                if (!prodMap[key]) {
+                    prodMap[key] = {
+                        name: it.name,
+                        unit: it.unit || 'Ud.',
+                        qty: 0,
+                        importe: 0
+                    };
+                }
+                prodMap[key].qty = Math.round((prodMap[key].qty + qty) * 100) / 100;
+                prodMap[key].importe = Math.round((prodMap[key].importe + imp) * 100) / 100;
+                grandImporte = Math.round((grandImporte + imp) * 100) / 100;
+            });
+        });
+
+        var prodList = Object.keys(prodMap).map(function(k) { return prodMap[k]; }).sort(function(a, b) {
+            return b.importe - a.importe;
+        });
+
+        var totalConVerifon = Math.round((grandImporte + totalVerifon) * 100) / 100;
+
+        var rowsHtml = '';
+        if (!prodList.length) {
+            rowsHtml = '<div class="tk-c" style="padding:10px 0;">Sin productos vendidos en este turno</div>';
+        } else {
+            rowsHtml = prodList.map(function(p) {
+                return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px;margin-bottom:5px;border-bottom:1px dotted #cbd5e1;padding-bottom:3px;">' +
+                    '<span style="flex:1;font-weight:bold;word-break:break-word;">' + escHtml(p.name) + '</span>' +
+                    '<span style="width:52px;text-align:center;font-weight:bold;">' + fmtQty(p.qty) + '</span>' +
+                    '<span style="width:76px;text-align:right;font-weight:900;">' + fmtMoney(p.importe).replace('RD$ ', '') + '</span>' +
+                '</div>';
+            }).join('');
+        }
+
+        return '<div class="tk-c">' +
+                logo +
+                '<div style="font-size:15px;font-weight:900;">' + escHtml(bizSettings.bizName) + '</div>' +
+                '<div style="margin-top:4px;border:1.5px solid #000;padding:4px;font-weight:900;">DETALLE DE PRODUCTOS VENDIDOS</div>' +
+            '</div>' +
+            '<div class="tk-dash"></div>' +
+            '<div><b>Almacén:</b> ' + escHtml(getWhName(activeWh)) + '</div>' +
+            '<div><b>Turno:</b> ' + escHtml(shiftLabel) + '</div>' +
+            '<div><b>Fecha:</b> ' + new Date().toLocaleString('es-DO') + '</div>' +
+            '<div><b>Cajero:</b> ' + escHtml(getActiveCashier().name) + '</div>' +
+            '<div class="tk-dash"></div>' +
+            '<div style="display:flex;justify-content:space-between;font-weight:900;font-size:11px;border-bottom:1.5px solid #000;padding-bottom:3px;margin-bottom:5px;">' +
+                '<span style="flex:1;">NOMBRE</span>' +
+                '<span style="width:52px;text-align:center;">CANT.</span>' +
+                '<span style="width:76px;text-align:right;">IMPORTE</span>' +
+            '</div>' +
+            rowsHtml +
+            '<div class="tk-dash"></div>' +
+            (totalVerifon > 0 ? (
+                '<div class="tk-row"><span>Subtotal Productos:</span><span>' + fmtMoney(grandImporte) + '</span></div>' +
+                '<div class="tk-row"><span>Impuesto Verifon (10%):</span><span>' + fmtMoney(totalVerifon) + '</span></div>'
+            ) : '') +
+            '<div class="tk-row" style="font-size:13.5px;font-weight:900;margin-top:3px;"><span>TOTAL DE VENTAS:</span><span>' + fmtMoney(totalConVerifon) + '</span></div>' +
+            '<div class="tk-dash"></div>' +
+            '<div class="tk-c" style="font-size:10.5px;font-weight:bold;">Resumen de Artículos del Turno</div>';
     }
 
     /* =========================================================================
@@ -6116,7 +6310,10 @@
                 var resetTurno = document.getElementById('chk-reset-turno') && document.getElementById('chk-reset-turno').checked;
                 
                 closeMod('modal-close-z');
-                openReceiptViewer('Cierre de Caja Z 80mm', '#18181b', renderZReport80HTML(counted, cNote));
+                var dualZHtml = '<div class="ticket-section-z">' + renderZReport80HTML(counted, cNote) + '</div>' +
+                                '<div class="ticket-cut-divider">✂️ CORTE DE PAPEL • FACTURA DE PRODUCTOS VENDIDOS ✂️</div>' +
+                                '<div class="ticket-section-products">' + renderZProductsSold80HTML() + '</div>';
+                openReceiptViewer('Cierre Z + Productos Vendidos (80mm)', '#18181b', dualZHtml, true);
 
                 if (resetTurno) {
                     // Cierre Z de turno: Actualizar el fondo inicial para el siguiente turno y cambiar automáticamente al siguiente turno (Turno 1 -> Turno 2, o viceversa)
@@ -6464,7 +6661,18 @@
                 a.click();
                 toast('📥 Respaldo .JSON descargado');
             } else if (act === 'print-80mm') {
+                document.body.classList.remove('print-only-z', 'print-only-prods');
                 window.print();
+            } else if (act === 'print-only-z') {
+                document.body.classList.remove('print-only-prods');
+                document.body.classList.add('print-only-z');
+                window.print();
+                setTimeout(function() { document.body.classList.remove('print-only-z'); }, 500);
+            } else if (act === 'print-only-prods') {
+                document.body.classList.remove('print-only-z');
+                document.body.classList.add('print-only-prods');
+                window.print();
+                setTimeout(function() { document.body.classList.remove('print-only-prods'); }, 500);
             } else if (act === 'close-modal') {
                 closeMod(el.getAttribute('data-modal'));
             }
