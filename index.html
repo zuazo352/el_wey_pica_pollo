@@ -2308,7 +2308,7 @@
                 </div>
             </div>
 
-            <div class="cfg-grid" style="margin-bottom:14px;">
+            <div class="cfg-grid" style="margin-bottom:14px;grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
                 <div class="cfg-card">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;border-bottom:2px solid #f1f5f9;padding-bottom:8px;">
                         <h3 style="border:none;padding:0;">📊 Gráfica Diaria: Ventas Totales vs Ganancia</h3>
@@ -2323,6 +2323,15 @@
                 <div class="cfg-card">
                     <h3>🍩 Gráfica Distribución por Método de Pago</h3>
                     <div id="rep-methods-chart" style="padding-top:4px;"></div>
+                </div>
+
+                <div class="cfg-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;border-bottom:2px solid #f1f5f9;padding-bottom:8px;">
+                        <h3 style="border:none;padding:0;">🏠 Consumo de La Casa (Costo)</h3>
+                        <span id="rep-lacasa-summary" style="font-size:0.75rem;font-weight:900;color:#854d0e;">RD$ 0.00 total</span>
+                    </div>
+                    <div style="font-size:0.78rem;font-weight:800;color:#475569;margin-bottom:6px;">Desglose diario y montos de consumo interno sin margen de ganancia:</div>
+                    <div id="rep-lacasa-chart" class="chart-daily-bars" style="min-height:185px;"></div>
                 </div>
             </div>
 
@@ -3554,7 +3563,7 @@
     var productPurchases = loadData('ew_purchases_v1', []);
     var cashEvents = loadData('ew_events_v1', []);
     var conducesHistory = loadData('ew_conduces_v1', []);
-    var shiftsState = loadData('ew_shifts', { 1: { fund: 0 }, 2: { fund: 0 } });
+    var shiftsState = loadData('ew_shifts', { 1: { fund: 0, run: 1 }, 2: { fund: 0, run: 1 } });
 
     var ordSeq = loadData('ew_order_counter', salesHistory.length + 1);
     var advSeq = loadData('ew_adv_counter', salaryAdvances.length + 1);
@@ -4312,6 +4321,7 @@
             change: method === 'Efectivo' ? Math.max(0, Math.round((cashRec - finalTotal) * 100) / 100) : 0,
             status: 'COMPLETADA',
             shift: activeShift,
+            shiftRun: (shiftsState[activeWh] && shiftsState[activeWh].run) || 1,
             isoDate: toISODateLocal(nowObj),
             date: nowObj.toLocaleDateString('es-DO'),
             time: nowObj.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit' }),
@@ -4801,10 +4811,13 @@
 
     function getActiveShiftSales() {
         var bizISO = getBusinessDateISO(new Date());
+        var curRun = (shiftsState[activeWh] && shiftsState[activeWh].run) || 1;
         return salesHistory.filter(function(s) {
             if (Number(s.wh) !== Number(activeWh)) return false;
             if (s.status === 'ANULADA') return false;
             if (Number(s.shift || 1) !== Number(activeShift)) return false;
+            var sRun = s.shiftRun != null ? Number(s.shiftRun) : 1;
+            if (sRun !== curRun) return false;
             var sISO = parseSaleISODate(s);
             return sISO === bizISO;
         });
@@ -4812,9 +4825,12 @@
 
     function getActiveShiftOps(arr) {
         var bizStr = getBusinessDateStr(new Date());
+        var curRun = (shiftsState[activeWh] && shiftsState[activeWh].run) || 1;
         return (arr || []).filter(function(item) {
             if (Number(item.wh) !== Number(activeWh)) return false;
             if (item.shift != null && Number(item.shift) !== Number(activeShift)) return false;
+            var iRun = item.shiftRun != null ? Number(item.shiftRun) : 1;
+            if (iRun !== curRun) return false;
             if (item.date && item.date !== bizStr) return false;
             return true;
         });
@@ -4996,6 +5012,7 @@
             id: 'PUR-' + Date.now(),
             wh: activeWh,
             shift: activeShift,
+            shiftRun: (shiftsState[activeWh] && shiftsState[activeWh].run) || 1,
             desc: descText,
             qty: qty,
             cost: cost,
@@ -5032,6 +5049,7 @@
             code: code,
             wh: activeWh,
             shift: activeShift,
+            shiftRun: (shiftsState[activeWh] && shiftsState[activeWh].run) || 1,
             whName: getWhName(activeWh),
             employee: emp,
             cedula: ced,
@@ -5067,6 +5085,7 @@
             id: 'EVT-' + Date.now(),
             wh: activeWh,
             shift: activeShift,
+            shiftRun: (shiftsState[activeWh] && shiftsState[activeWh].run) || 1,
             type: type,
             desc: desc,
             amount: Math.round(amt * 100) / 100,
@@ -5282,6 +5301,40 @@
                     '<td style="font-weight:900;color:var(--success);">' + fmtMoney(tp.profit) + '</td>' +
                 '</tr>';
             }).join('');
+        }
+
+        var byDayLcMap = {};
+        filteredSales.forEach(function(s) {
+            if (s.method === 'La Casa') {
+                var dKey = parseSaleISODate(s);
+                if (!byDayLcMap[dKey]) byDayLcMap[dKey] = 0;
+                byDayLcMap[dKey] += Number(s.total || 0);
+            }
+        });
+
+        var lacasaBox = document.getElementById('rep-lacasa-chart');
+        var lacasaSumEl = document.getElementById('rep-lacasa-summary');
+        if (lacasaSumEl) lacasaSumEl.textContent = fmtMoney(lcTotal) + ' total';
+
+        var lcKeys = Object.keys(byDayLcMap).sort();
+        if (lacasaBox) {
+            if (!lcKeys.length) {
+                lacasaBox.innerHTML = '<div style="width:100%;text-align:center;color:#64748b;font-weight:800;padding:40px 10px;">Sin consumo de La Casa en el período</div>';
+            } else {
+                var maxLc = lcKeys.reduce(function(m, k) { return Math.max(m, byDayLcMap[k]); }, 1);
+                lacasaBox.innerHTML = lcKeys.map(function(k) {
+                    var val = byDayLcMap[k];
+                    var h = Math.max(6, Math.round((val / maxLc) * 125));
+                    var shortD = k.slice(5);
+                    return '<div class="chart-day-col" title="Fecha: ' + k + ' | La Casa: ' + fmtMoney(val) + '">' +
+                        '<div class="chart-day-val">' + fmtMoney(val).replace('RD$ ', '') + '</div>' +
+                        '<div class="chart-day-pair" style="height:125px;">' +
+                            '<div class="bar-v" style="height:' + h + 'px;background:linear-gradient(180deg,#ca8a04 0%,#854d0e 100%);"></div>' +
+                        '</div>' +
+                        '<div class="chart-day-lbl">' + escHtml(shortD) + '</div>' +
+                    '</div>';
+                }).join('');
+            }
         }
 
         lastReportSummary = {
@@ -6316,10 +6369,11 @@
                 openReceiptViewer('Cierre Z + Productos Vendidos (80mm)', '#18181b', dualZHtml, true);
 
                 if (resetTurno) {
-                    // Cierre Z de turno: Actualizar el fondo inicial para el siguiente turno y cambiar automáticamente al siguiente turno (Turno 1 -> Turno 2, o viceversa)
-                    // NOTA: Se conservan intactos el historial de ventas y reportes para auditoría gerencial.
+                    // Cierre Z de turno: Colocar 0 en inicial para que la próxima persona cuente su fondo e inicie de 0.
+                    // Se incrementa el run de sesión para separar el arqueo de caja Z actual sin perder jamás ninguna venta en los reportes gerenciales del día.
                     if (!shiftsState[activeWh]) shiftsState[activeWh] = {};
-                    shiftsState[activeWh].fund = counted;
+                    shiftsState[activeWh].fund = 0;
+                    shiftsState[activeWh].run = (shiftsState[activeWh].run || 1) + 1;
                     activeShift = activeShift === 1 ? 2 : 1;
 
                     saveData('ew_shifts', shiftsState);
@@ -6327,7 +6381,7 @@
                     updateTopbarUI();
                     renderCajaZ();
                     renderCatalog();
-                    toast('🔄 Cierre Z completado. Turno cambiado a ' + (activeShift === 2 ? 'Turno 2' : 'Turno 1') + ' con fondo de ' + fmtMoney(counted));
+                    toast('🔄 Cierre Z completado. Turno cambiado a ' + (activeShift === 2 ? 'Turno 2' : 'Turno 1') + ' con fondo inicial en RD$ 0.00');
                 }
             } else if (act === 'open-modal-adelantos') {
                 openMod('modal-adelantos');
