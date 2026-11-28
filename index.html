@@ -1858,6 +1858,7 @@
         </div>
 
         <nav class="nav-tabs">
+            <button type="button" class="nav-btn" style="background:#dc2626;border-color:#fca5a5;color:#ffffff;font-weight:900;" data-action="open-drawer-pulse" title="Abrir Gaveta de Dinero Sin Venta">🔑 Abrir Caja</button>
             <button type="button" class="nav-btn active" data-action="nav" data-view="ventas">🛒 Ventas</button>
             <button type="button" class="nav-btn" data-action="nav" data-view="inventario">📊 Inventario</button>
             <button type="button" class="nav-btn" data-action="nav" data-view="productos">📦 Productos</button>
@@ -2305,6 +2306,28 @@
                     <div class="stat-lbl" style="color:#166534;">💰 Ganancia Neta</div>
                     <div id="rep-kpi-profit" class="stat-val" style="color:var(--success);">RD$ 0.00</div>
                     <div id="rep-kpi-margin" class="stat-sub" style="color:#166534;font-weight:900;">Margen: 0.0%</div>
+                </div>
+            </div>
+
+            <div class="card-table" style="margin-bottom:14px;padding:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                    <h3 style="font-size:0.95rem;font-weight:900;color:var(--text);border:none;padding:0;">🔑 Auditoría y Horarios de Aperturas de Caja</h3>
+                    <span id="rep-drawer-cnt" style="font-size:0.78rem;font-weight:800;color:var(--muted);">0 aperturas registradas</span>
+                </div>
+                <div style="font-size:0.78rem;font-weight:800;color:#475569;margin-bottom:8px;">Control detallado de cada vez que se abrió la caja sin venta por cajero, fecha y turno:</div>
+                <div style="max-height:220px;overflow-y:auto;">
+                    <table class="tbl">
+                        <thead>
+                            <tr>
+                                <th>FECHA / HORA</th>
+                                <th>ALMACÉN</th>
+                                <th>TURNO</th>
+                                <th>CAJERO RESPONSABLE</th>
+                                <th style="text-align:center;">ESTADO</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rep-drawer-tbody"></tbody>
+                    </table>
                 </div>
             </div>
 
@@ -2804,7 +2827,7 @@
 <div id="modal-close-z" class="modal-overlay">
     <div class="modal-box" style="max-width:460px;">
         <div class="modal-head" style="background:#18181b;">
-            <h3 style="color:#fde047;">🔒 Cierre Z y Arqueo Físico de Gaveta</h3>
+            <h3 style="color:#fde047;">🔒 Caja y Arqueo Físico de Gaveta</h3>
             <button type="button" class="modal-close" data-action="close-modal" data-modal="modal-close-z">✕</button>
         </div>
         <div class="modal-body">
@@ -2828,12 +2851,12 @@
             </div>
             <label class="perm-chk" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:9px;padding:10px;color:#166534;margin-top:8px;cursor:pointer;">
                 <input type="checkbox" id="chk-reset-turno" checked style="width:18px;height:18px;">
-                🔄 <b>Cambio de Turno (Reiniciar turno y dejar el efectivo contado como nuevo fondo inicial)</b>
+                🔄 <b>Cambio de turno y colocar valores en 0</b>
             </label>
         </div>
         <div class="modal-foot">
             <button type="button" class="tab-btn" data-action="close-modal" data-modal="modal-close-z">Cancelar</button>
-            <button type="button" class="btn-primary-green" style="background:#18181b;color:#fde047;" data-action="print-z-report">🖨️ IMPRIMIR CIERRE Z Y REINICIAR TURNO</button>
+            <button type="button" class="btn-primary-green" style="background:#18181b;color:#fde047;" data-action="print-z-report">🖨️ IMPRIMIR CAJA Y REINICIAR TURNO</button>
         </div>
     </div>
 </div>
@@ -3563,6 +3586,7 @@
     var productPurchases = loadData('ew_purchases_v1', []);
     var cashEvents = loadData('ew_events_v1', []);
     var conducesHistory = loadData('ew_conduces_v1', []);
+    var drawerOpenLogs = loadData('ew_drawer_logs_v1', []);
     var shiftsState = loadData('ew_shifts', { 1: { fund: 0, run: 1 }, 2: { fund: 0, run: 1 } });
 
     var ordSeq = loadData('ew_order_counter', salesHistory.length + 1);
@@ -5337,7 +5361,36 @@
             }
         }
 
-        lastReportSummary = {
+        var filteredDrawerLogs = (drawerOpenLogs || []).filter(function(l) {
+            if (whF !== 'all' && String(l.wh) !== whF) return false;
+            if (shiftF !== 'all' && Number(l.shift || 1) !== Number(shiftF)) return false;
+            var lISO = l.isoDate || toISODateLocal(new Date());
+            if (startStr && lISO < startStr) return false;
+            if (endStr && lISO > endStr) return false;
+            return true;
+        });
+
+        var drawerTb = document.getElementById('rep-drawer-tbody');
+        var drawerCntEl = document.getElementById('rep-drawer-cnt');
+        if (drawerCntEl) drawerCntEl.textContent = filteredDrawerLogs.length + ' apertura(s)';
+        if (drawerTb) {
+            if (!filteredDrawerLogs.length) {
+                drawerTb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:16px;color:#64748b;font-weight:800;">Sin aperturas manuales de caja en el período</td></tr>';
+            } else {
+                drawerTb.innerHTML = filteredDrawerLogs.slice().reverse().map(function(dl) {
+                    var sLbl = Number(dl.shift || 1) === 2 ? 'Turno 2 (Tarde)' : 'Turno 1 (Mañana)';
+                    return '<tr>' +
+                        '<td style="font-weight:900;">' + escHtml(dl.date + ' ' + dl.time) + '</td>' +
+                        '<td>' + escHtml(getWhShort(dl.wh)) + '</td>' +
+                        '<td>' + escHtml(sLbl) + '</td>' +
+                        '<td style="font-weight:800;color:var(--primary);">' + escHtml(dl.cashier) + '</td>' +
+                        '<td style="text-align:center;"><span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:999px;font-weight:900;font-size:0.7rem;">APERTURA MANUAL</span></td>' +
+                    '</tr>';
+                }).join('');
+            }
+        }
+
+                lastReportSummary = {
             startStr: startStr,
             endStr: endStr,
             whLabel: whF === 'all' ? 'Todos los Almacenes' : getWhName(whF),
@@ -5609,7 +5662,47 @@
     /* =========================================================================
        K. TICKETS TÉRMICOS 80MM (VENTAS, ADELANTOS, CIERRE Z Y CONDUCE)
     ========================================================================= */
-    function openReceiptViewer(title, headerColor, htmlBody, isDualZ) {
+    function triggerOpenDrawer() {
+        var u = getActiveCashier();
+        var nowObj = new Date();
+        var logObj = {
+            id: 'DRW-' + nowObj.getTime(),
+            date: nowObj.toLocaleDateString('es-DO'),
+            time: nowObj.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            isoDate: toISODateLocal(nowObj),
+            wh: activeWh,
+            whName: getWhName(activeWh),
+            cashier: u.name,
+            shift: activeShift,
+            shiftRun: (shiftsState[activeWh] && shiftsState[activeWh].run) || 1
+        };
+        drawerOpenLogs.push(logObj);
+        saveData('ew_drawer_logs_v1', drawerOpenLogs);
+
+        // Enviar pulso a impresora térmica (ESC/POS cash drawer kick)
+        var comandoApertura = '\x1B\x70\x00\x19\xFA';
+        var iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        var doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write('<html><body style="font-family:Courier New;font-size:10px;">' +
+                  '<div style="text-align:center;">--- APERTURA MANUAL DE CAJA ---</div>' +
+                  '<div style="display:none;">' + comandoApertura + '</div>' +
+                  '</body></html>');
+        doc.close();
+        setTimeout(function() {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } catch (e) {}
+            setTimeout(function() { document.body.removeChild(iframe); }, 300);
+        }, 120);
+
+        toast('🔑 ¡Caja abierta correctamente! (Registrado en Reportes)');
+    }
+
+        function openReceiptViewer(title, headerColor, htmlBody, isDualZ) {
         document.getElementById('rcp-modal-title').textContent = title;
         document.getElementById('rcp-modal-head').style.background = headerColor || '#18181b';
         document.getElementById('print-area-80').innerHTML = htmlBody;
@@ -5769,7 +5862,7 @@
         return '<div class="tk-c">' +
                 logo +
                 '<div style="font-size:15px;font-weight:900;">' + escHtml(bizSettings.bizName) + '</div>' +
-                '<div style="margin-top:4px;border:1.5px solid #000;padding:4px;font-weight:900;">REPORTE DE CIERRE DE CAJA Z</div>' +
+                '<div style="margin-top:4px;border:1.5px solid #000;padding:4px;font-weight:900;">REPORTE DE CIERRE DE CAJA</div>' +
             '</div>' +
             '<div class="tk-dash"></div>' +
             '<div><b>Almacén:</b> ' + escHtml(getWhName(activeWh)) + '</div>' +
@@ -6031,6 +6124,7 @@
             productPurchases: productPurchases,
             cashEvents: cashEvents,
             conducesHistory: conducesHistory,
+            drawerOpenLogs: drawerOpenLogs,
             shiftsState: shiftsState,
             ordSeq: ordSeq,
             advSeq: advSeq,
@@ -6052,6 +6146,7 @@
         if (Array.isArray(snap.productPurchases)) { productPurchases = snap.productPurchases; saveData('ew_purchases_v1', productPurchases, true); }
         if (Array.isArray(snap.cashEvents)) { cashEvents = snap.cashEvents; saveData('ew_events_v1', cashEvents, true); }
         if (Array.isArray(snap.conducesHistory)) { conducesHistory = snap.conducesHistory; saveData('ew_conduces_v1', conducesHistory, true); }
+        if (snap.drawerOpenLogs) { drawerOpenLogs = snap.drawerOpenLogs; saveData('ew_drawer_logs_v1', drawerOpenLogs, true); }
         if (snap.shiftsState) { shiftsState = snap.shiftsState; saveData('ew_shifts', shiftsState, true); }
         if (snap.ordSeq) { ordSeq = Number(snap.ordSeq); saveData('ew_order_counter', ordSeq, true); }
         if (snap.advSeq) { advSeq = Number(snap.advSeq); saveData('ew_adv_counter', advSeq, true); }
@@ -6177,7 +6272,9 @@
         var act = el.getAttribute('data-action');
 
         try {
-            if (act === 'open-pin-pad') {
+            if (act === 'open-drawer-pulse') {
+                triggerOpenDrawer();
+            } else if (act === 'open-pin-pad') {
                 openPinPadModal();
             } else if (act === 'pin-key') {
                 handlePinKey(el.getAttribute('data-k'));
